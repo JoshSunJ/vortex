@@ -1,0 +1,4 @@
+# Service-local credentials. Commit only the empty .env.example template.
+.env
+.env.*
+!.env.example
