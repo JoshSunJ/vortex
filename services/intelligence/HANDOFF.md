@@ -192,15 +192,20 @@ validators. The dependent API/contracts/UI were imported from Josh's published
 `feat/control` at `a270752`, then updated to `f319ef5` for direct voice previews
 and Cartesia TTS. A minimal plan-timestamp fix in `apps/desktop/src/control.ts`
 uses one clock reading to prevent self-rejection at the two-minute expiry bound;
-the deterministic regression fails before this fix and passes afterward. Josh
-should review it. Other A/C code is unchanged. No default API server or Electron
-UI entrypoint was rewired; app hookup remains coordinated with Andrew/Josh.
+the deterministic regression fails before this fix and passes afterward. That fix
+was included in main integration. The subsequent desktop-routing hookup now
+enables B's resolver in `LocalCommands` and `withApiPlanner` in the default API
+server. The renderer, IPC, source capture and model-generation UI remain unchanged.
 
-Verification: root and desktop TypeScript checks passed; shared suites plus B
-integration/expiry cases passed (96 tests total after the latest voice update).
-The unchanged legacy B Node suite previously passed 85 with one Windows
-symlink-privilege skip. Loopback server tests require local communication permission
+Verification: root and desktop TypeScript checks passed; Vitest passed 104 tests,
+including default API bootstrap and desktop-routing integration. The Node suites
+passed 105 tests with one Windows symlink-privilege skip. Loopback server tests require local communication permission
 in the Codex sandbox. No package or model versions were changed.
+
+The current hookup has separate integration tests for the real default API
+bootstrap and local command HTTP/SQLite/approval path. Native adapters are mocked:
+these checks do not prove a physical microphone, real foreground focus or live
+provider/phone behavior. Use `npm run check` for current combined verification.
 
 ## Linked Fetch dispatch boundary
 

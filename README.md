@@ -31,8 +31,8 @@ symlink test when the account lacks symlink creation privileges. Keep `.env` and
 - [API](services/api/README.md): authenticated Hono routes on fixture services;
   real production sign-in, durable cloud persistence and phone delivery are pending.
 - [Intelligence integration](services/intelligence/API_INTEGRATION.md): shared
-  focus/resume planning and canonical checkpoint/brief drafts. Default app
-  entrypoints still need the reviewed integration hookup.
+  focus/resume routing enabled in desktop command preview and the default API;
+  canonical checkpoint/brief drafts still need model/content UI integration.
 - [Elastic/Apify](services/intelligence/RETRIEVAL_ADAPTERS.md): offline-tested Python
   adapters; live provider verification and production authorization are pending.
   Model-directed agent search is blocked until scope is enforced outside prompts.

@@ -11,10 +11,10 @@ const failure = (code, message) => ({ kind: 'error', code, message });
 const grammar = [
   ['find', /^(?:find|search for)\s+(.+?)[.!?]?$/iu],
   ['create_workspace', /^create workspace\s+"([^"]+)"[.!?]?$/iu],
-  ['focus_workspace', /^(?:focus|switch to)\s+(.+?)[.!?]?$/iu],
+  ['focus_workspace', /^(?:focus|switch to)\s+(?:workspace\s+)?(.+?)[.!?]?$/iu],
   ['save_checkpoint', /^save checkpoint\s+"([^"]+)"[.!?]?$/iu],
   ['send_brief', /^send brief\s+"([^"]+)"[.!?]?$/iu],
-  ['resume_workspace', /^(?:resume|continue)\s+(.+?)[.!?]?$/iu],
+  ['resume_workspace', /^(?:resume|continue)\s+(?:workspace\s+)?(.+?)[.!?]?$/iu],
 ];
 
 /**
@@ -37,7 +37,7 @@ export function resolveWorkspaceRequest(input) {
   if (input.workspaceId !== undefined && !uuid(input.workspaceId)) {
     return failure('VALIDATION_ERROR', 'The workspace ID is invalid.');
   }
-  const commandText = input.text.normalize('NFKC').trim();
+  const commandText = input.text.normalize('NFKC').trim().replace(/^please\s+/iu, '');
   let kind;
   let phrase;
   for (const [candidateKind, pattern] of grammar) {
@@ -50,6 +50,11 @@ export function resolveWorkspaceRequest(input) {
   }
   if (!phrase) {
     return failure('NEEDS_CLARIFICATION', 'Please use a supported workspace command.');
+  }
+  if (kind === 'focus_workspace' || kind === 'resume_workspace') {
+    const closingQuote = { '"': '"', "'": "'", '\u201c': '\u201d' }[phrase[0]];
+    if (closingQuote && phrase.endsWith(closingQuote)) phrase = phrase.slice(1, -1).trim();
+    if (!phrase) return failure('NEEDS_CLARIFICATION', 'Provide a saved workspace name.');
   }
   if (kind === 'find') {
     const command = { kind, query: phrase };

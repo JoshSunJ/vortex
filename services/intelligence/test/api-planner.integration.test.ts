@@ -5,7 +5,7 @@ import { createApp } from '../../api/src/app';
 import { createSigner } from '../../api/src/auth';
 import { ApiError } from '../../api/src/envelope';
 import { createFixtureServices } from '../../api/src/fixtureServices';
-import { createApiPlanner } from '../src/api-planner';
+import { withApiPlanner } from '../src/api-planner';
 
 // Real Hono routes, HMAC verification, Zod contracts and B resolver.
 // Shared records/plans/effects are Andrew's labeled FIXTURE services.
@@ -16,7 +16,7 @@ async function harness() {
   const execute = vi.spyOn(base, 'executePlan');
   const checkpoint = vi.spyOn(base, 'createCheckpoint');
   const createWorkspace = vi.spyOn(base, 'createWorkspace');
-  const services = { ...base, createPlan: createApiPlanner(base) };
+  const services = withApiPlanner(base);
   const signer = await createSigner('MOCK-integration-secret-not-for-production-12345');
   const token = await signer.sign({ userId: F.users.sam.id, deviceId: F.devices.samDesktop.id, deviceKind: 'desktop' });
   const app = createApp({ services, signer });
@@ -30,8 +30,18 @@ async function harness() {
 }
 
 describe('Owner B planning through the actual authenticated API (fixture data)', () => {
+  it('preserves other service methods and their original receiver when enabled', async () => {
+    const h = await harness(); const snapshot = vi.spyOn(h.base, 'getSnapshot');
+    const response = await h.app.request(`/v1/snapshot?deviceId=${F.devices.samDesktop.id}`, {
+      headers: { Authorization: `Bearer ${h.token}` },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('X-Vortex-Services')).toBe('fixture');
+    expect(snapshot.mock.contexts[0]).toBe(h.base);
+  });
   it('routes focus/resume/continue/switch through shared stored plans without executing effects', async () => {
-    for (const text of ['focus Group Project', 'switch to Group Project', 'resume Group Project', 'continue Group Project']) {
+    for (const text of ['focus Group Project', 'switch to Group Project', 'resume Group Project', 'continue Group Project',
+      'Please resume workspace "Group Project".', 'focus \u201cGroup Project\u201d']) {
       const h = await harness();
       const response = await h.post({ ...h.request, text });
       expect(response.status).toBe(200);

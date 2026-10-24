@@ -5,14 +5,14 @@ import * as F from '@vortex/fixtures';
 import { createApp } from '../api/src/app.ts';
 import { createSigner } from '../api/src/auth.ts';
 import { createFixtureServices } from '../api/src/fixtureServices.ts';
-import { createApiPlanner } from './src/api-planner.ts';
+import { withApiPlanner } from './src/api-planner.ts';
 import { createCanonicalContentDrafts } from './src/canonical-content.ts';
 
 const shared = createFixtureServices();
 const signer = await createSigner('MOCK-offline-demo-secret-not-for-production-12345');
 const auth = { userId: F.users.sam.id, deviceId: F.devices.samDesktop.id, deviceKind: 'desktop' };
 const token = await signer.sign(auth);
-const app = createApp({ signer, services: { ...shared, createPlan: createApiPlanner(shared) } });
+const app = createApp({ signer, services: withApiPlanner(shared) });
 const text = 'resume Group Project';
 const response = await app.request('/v1/plans', { method: 'POST',
   headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

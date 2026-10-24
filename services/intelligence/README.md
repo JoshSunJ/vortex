@@ -2,10 +2,13 @@
 
 The [API integration slice](API_INTEGRATION.md) adds a Node 24+ demonstration
 through the actual authenticated team API and canonical schemas. Its shared data
-and model remain labeled MOCK. This does not enable the default desktop UI yet.
+and model remain labeled MOCK. Named-workspace focus/resume routing is enabled
+in the default desktop command preview and API server. Model generation is not
+connected to those entrypoints yet.
 
-A dependency-free Node.js starting point for Owner B. Gemini is the selected model
-provider. Real browser inventory, Elastic, Apify, and Fetch are not connected.
+The core B modules use built-in Node APIs; desktop/API adapters use the team's
+existing workspace packages. Gemini is the selected model provider. Standalone
+console demos use mock inventory; live provider/content/Fetch paths remain unwired.
 All demos still use MOCK records/responses. A synthetic live Gemini check passed
 on October 24, 2026; developers must configure their own approved local key.
 Project files, messages, examples, and supported command patterns use English.

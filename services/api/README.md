@@ -6,6 +6,13 @@ intelligence and Josh's executor plug in behind the `Services` interface in `src
 **Status:** skeleton on **fixture services**. Every response carries `X-Vortex-Services: fixture`.
 That is development data, not live sponsor evidence.
 
+The default server now enables Nova's `withApiPlanner` wrapper for `POST /v1/plans`.
+Focus/resume resolve the named authorized workspace rather than returning a canned
+focus target. Unknown names return NOT_FOUND, duplicates ask for clarification,
+and other command kinds receive guidance to the dedicated service/form. The
+underlying inventory/planner remains fixture-backed; production mode is not enabled.
+The raw fixture-client harness remains a development stand-in unless explicitly wrapped.
+
 ## Run
 
 ```bash
@@ -69,5 +76,6 @@ optional `userNote`.
 
 - State is in memory (lost on restart). Durable state moves to the Spacetime module (`services/sync`).
 - Pairing confirm returns the phone `Device` but doesn't hand the phone a token yet (1 PM milestone).
-- `VORTEX_SERVICES=live` isn't wired; plans/briefs/checkpoints are canned fixtures.
+- `VORTEX_SERVICES=live` isn't wired. Default plan requests use B routing over
+  fixture inventory/planning; briefs/checkpoints still use fixture services.
 - Dev tokens come from `npm run dev:token`, not a real sign-in.

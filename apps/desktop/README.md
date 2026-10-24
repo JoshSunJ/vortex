@@ -43,7 +43,7 @@ Typed commands work immediately, without provider keys. Examples:
 - Select resources, then use `create workspace Research` to open a prefilled creation form.
 - `save checkpoint for Research saying Next: compare the costs.` opens a note draft for review and saving.
 
-This is a deterministic local command grammar, not Nova's Llama intent planner. Unsupported instructions return help rather than gaining new OS capabilities. Find/planning never executes a focus action. Creating/checkpoint commands prepare forms; users still save them explicitly.
+Named-workspace focus/resume now uses Nova's shared bounded resolver, also used by the API. Local metadata search, native-title focus and create/checkpoint forms remain deterministic. This hookup does not call Gemini or another model. Unsupported instructions return help rather than gaining new OS capabilities. Find/planning never executes a focus action. Creating/checkpoint commands prepare forms; users still save them explicitly.
 
 For voice:
 

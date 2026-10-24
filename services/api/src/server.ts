@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createSigner } from "./auth";
 import { createFixtureServices } from "./fixtureServices";
+import { withApiPlanner } from "../../intelligence/src/api-planner";
 
 const secret = process.env.VORTEX_AUTH_SECRET;
 if (!secret) {
@@ -16,7 +17,7 @@ if (mode !== "fixture") {
 }
 
 const port = Number(process.env.VORTEX_API_PORT ?? 8787);
-const app = createApp({ services: createFixtureServices(), signer: await createSigner(secret) });
+const app = createApp({ services: withApiPlanner(createFixtureServices()), signer: await createSigner(secret) });
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Vortex API on http://localhost:${port}/v1 (services: FIXTURE, not live evidence)`);

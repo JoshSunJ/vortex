@@ -5,6 +5,20 @@ import { PlanRequest, WorkspaceList } from '../../api/src/schemas';
 import type { Services } from '../../api/src/services';
 import { resolveWorkspaceRequest } from './workspace-router.mjs';
 
+/** Enable B planning on an existing Services object while preserving its label
+ * and method bindings. No other service implementation is replaced.
+ */
+export function withApiPlanner(services: Services): Services {
+  const planner = createApiPlanner(services);
+  return new Proxy(services, {
+    get(target, key) {
+      if (key === 'createPlan') return planner;
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
 /** Implement Services.createPlan without adding an API route, store or executor.
  * The caller supplies existing authenticated shared services, not a fixture
  * implementation selected silently by this module. The services' label stays

@@ -1,7 +1,8 @@
 import { z } from "zod";
-import type { Plan, Resource } from "@vortex/contracts";
+import { WorkspaceCommand, type Plan, type Resource } from "@vortex/contracts";
 import { ControlEngine } from "./control.ts";
 import { LocalWorkspaces } from "./workspaces.ts";
+import { resolveWorkspaceRequest } from "../../../services/intelligence/src/workspace-router.mjs";
 
 export const CommandRequest = z.strictObject({ text: z.string().trim().min(1).max(2400) });
 type Choice = { id: string; label: string; kind: "workspace" | "resource" };
@@ -46,13 +47,31 @@ export class LocalCommands {
     const userNote = checkpoint?.[2]?.trim();
     if (userNote && userNote.length > 2000) return clarify("Keep the checkpoint note under 2,000 characters.");
     const entries = this.workspaces.list().workspaces;
+    if (intent !== "checkpoint") {
+      // Voice and typed input share B's exact workspace resolution with the API.
+      // Only A's existing workspace service creates the stored approval plan.
+      const resolution = resolveWorkspaceRequest({ text: `${intent} ${name}`, deviceId: this.engine.deviceId,
+        workspaces: entries.map(entry => entry.workspace) });
+      if (resolution.kind === "command") {
+        const value = WorkspaceCommand.parse(resolution.command);
+        if (value.kind === "focus_workspace" || value.kind === "resume_workspace") {
+          return { kind: "plan", plan: await this.workspaces.preview(value.workspaceId, intent) };
+        }
+      } else if (resolution.kind === "ambiguous") {
+        return { kind: "clarification", intent, message: resolution.question,
+          choices: resolution.candidates.slice(0, 20).map(candidate => ({
+            id: candidate.workspaceId, label: candidate.name, kind: "workspace",
+          })) };
+      } else if (resolution.code !== "NOT_FOUND" && !(intent === "focus" && name.length > 100)) {
+        return clarify("The saved workspace request could not be resolved. Check its name and refresh the app.");
+      }
+    }
     const exact = entries.filter(x => normalized(x.workspace.name) === normalized(name));
     // Never guess from a partial workspace name; a user chooses a concrete saved ID.
     const candidates = exact.length ? exact : entries.filter(x => normalized(x.workspace.name).includes(normalized(name)));
-    if (exact.length === 1) {
+    if (intent === "checkpoint" && exact.length === 1) {
       const workspace = exact[0]!.workspace;
-      if (intent === "checkpoint") return { kind: "checkpoint", workspaceId: workspace.id, workspaceName: workspace.name, userNote: userNote! };
-      return { kind: "plan", plan: await this.workspaces.preview(workspace.id, intent) };
+      return { kind: "checkpoint", workspaceId: workspace.id, workspaceName: workspace.name, userNote: userNote! };
     }
     if (candidates.length) return { kind: "clarification", intent, userNote, message: "Choose the saved workspace you mean.", choices: candidates.slice(0,20).map(x => ({ id: x.workspace.id, label: x.workspace.name, kind: "workspace" })) };
     if (intent === "focus") {

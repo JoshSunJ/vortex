@@ -4,20 +4,23 @@ This slice connects Owner B's resolver to Andrew's actual `Services.createPlan`
 interface and Hono authentication routes. Content drafts now use the actual
 `@vortex/contracts` runtime schemas instead of injected test validators.
 
-## Branch dependency and ownership
+## Enabled entrypoints and ownership
 
-Started from `origin/main` at `c0a10cc`, then merged published Owner A branch
-`feat/control` at `a270752` into this feature branch only, then updated that
-dependency to `f319ef5` (direct voice previews and Cartesia spoken replies).
-That branch carries Andrew's API/contracts/fixtures as imported by Josh.
-Root configuration, lockfile, wire schema and routes are unchanged. A narrow
-integration fix in `apps/desktop/src/control.ts` is described below for Josh's
-review; other A/C implementation files are imported unchanged.
+The desktop command endpoint and default API server now use B's shared bounded
+workspace resolver. This hookup starts from integrated main `1478868`; it adds no
+dependencies, wire fields, routes, store or executor.
 
-`main` and teammate branches were not changed. The separate Fetch boundary on
-`codex/owner-b-fetch-boundary` is not a dependency of this slice. Andrew should
-coordinate shared-branch integration; do not independently merge duplicate copies
-of his API commits from different histories without checking their contents.
+- `apps/desktop/src/commands.ts`: transcript/typed focus and resume resolve the
+  locally saved workspace through B, then request A's existing stored preview.
+  Local search, direct native-title focus, partial-name choices and create/note
+  forms retain their existing paths. The renderer and voice IPC are unchanged.
+- `services/api/src/server.ts`: wraps its existing fixture Services object with
+  `withApiPlanner`. Authentication, labels and non-planning methods are preserved.
+- `services/intelligence/src/api-planner.ts`: shared authenticated API adapter.
+
+Only explicit approval/execution through A's existing service changes the desktop.
+This is deterministic workspace routing. It does not enable Gemini interpretation,
+cloud summaries, real phone delivery, or automatic source capture.
 
 ## Demonstrate the contribution without cloud costs
 
@@ -46,22 +49,22 @@ No key or signed token is printed. No local environment file is loaded.
 ## Compose into Andrew's existing API
 
 ```ts
-import { createApiPlanner } from './services/intelligence/src/api-planner';
+import { withApiPlanner } from './services/intelligence/src/api-planner';
 // sharedServices is Andrew's existing authenticated Services implementation.
-const services = {
-  ...sharedServices,
-  createPlan: createApiPlanner(sharedServices),
-};
+const services = withApiPlanner(sharedServices);
 const app = createApp({ services, signer });
 ```
 
 Do not relabel fixtures as `live`. The adapter preserves the supplied service
-label and never chooses a fixture fallback. The default `services/api/src/server.ts`
-and Owner A Electron entrypoint are unchanged; they do not enable this composition
-automatically. Coordinate the actual app hookup with Andrew/Josh.
+label and never chooses a fixture fallback. `withApiPlanner` also preserves method
+receivers, including non-planning methods. The default API server uses this
+composition but still accepts only `VORTEX_SERVICES=fixture`. The plain
+`createFixtureServices`/fixture-client harness remains a development fixture;
+consumers needing production-style B routing should use the wrapper explicitly.
 
 `focus`, `switch to`, `resume`, and `continue` resolve complete saved workspace
-names. Duplicate names return canonical Clarification options. An unknown
+names, including reviewed `Please`, `workspace`, and matched-quote forms. Duplicate
+names return canonical Clarification options. An unknown
 workspace returns NOT_FOUND. Unsupported/create/save/send/search requests never
 fall through to Andrew's canned focus plan: they return guidance to use the
 existing dedicated service/form. This planning endpoint does not mutate state.
@@ -89,10 +92,13 @@ the real operation receipt; draft creation alone is not delivery.
 
 ## Checks
 
-Latest dependency check: 96 Vitest tests passed, including the new expiry
-regression and Josh's latest voice-preview/TTS cases. Root and desktop TypeScript
-checks passed. The synthetic API/content demonstration passed without provider
-calls or desktop effects.
+Run `npm run check` for both TypeScript projects, all Vitest integration cases and
+the separate Node unit suites. New hookup cases exercise the actual default API
+process and authenticated local command endpoint with real SQLite/planning code
+and mock platform adapters. They check exact/ambiguous names, safe native fallback,
+authorization, stored hashes and explicit approval before the mock effect.
+Current result: 104 Vitest tests passed; 105 Node tests passed with one Windows
+symlink-privilege skip. No dependency/model version changed or billable call ran.
 
 ### Plan timestamp race found during integration
 
@@ -110,7 +116,7 @@ it never focuses a real window. Josh should review this small control-file chang
 ```powershell
 node node_modules/typescript/bin/tsc -p tsconfig.json
 node node_modules/typescript/bin/tsc -p apps/desktop/tsconfig.json
-node node_modules/vitest/vitest.mjs run services/intelligence/test/api-planner.integration.test.ts services/intelligence/test/canonical-content.integration.test.ts services/intelligence/test/plan-expiry.integration.spec.mjs
+node node_modules/vitest/vitest.mjs run services/intelligence/test/api-planner.integration.test.ts services/intelligence/test/desktop-routing.integration.spec.mjs services/intelligence/test/api-bootstrap.integration.spec.mjs
 ```
 
 The new integration suite covers the actual HMAC/API/schema path, workspace

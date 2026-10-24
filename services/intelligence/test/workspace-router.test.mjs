@@ -32,6 +32,14 @@ test('normalizes English whitespace and case while matching full workspace names
   assert.equal(resolve('resume Project', { workspaces }).code, 'NOT_FOUND');
 });
 
+test('accepts reviewed transcript-style prefixes and quoted workspace names', () => {
+  for (const text of ['Please resume workspace "Group Project".', "focus 'Group Project'", 'continue \u201cGroup Project\u201d']) {
+    assert.equal(resolve(text).command.workspaceId, workspaceId);
+  }
+  assert.equal(resolve('resume ""').code, 'NEEDS_CLARIFICATION');
+  assert.equal(resolve('resume "Group"').code, 'NOT_FOUND');
+});
+
 test('clarifies duplicate workspace names and resolves an explicit ID selection', () => {
   const workspaces = [workspace, { ...workspace, id: id(8) }];
   const ambiguous = resolve('resume Group Project', { workspaces });
