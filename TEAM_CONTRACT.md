@@ -7,11 +7,11 @@ The full contract is now split into **four teammate files in [contracts/](contra
 | Teammate | Contract | Responsibility |
 | --- | --- | --- |
 | Josh / A | [contracts/JOSH.md](contracts/JOSH.md) | Windows/browser control, local executor, Cartesia voice and canonical wire types |
-| Nova / B | [contracts/NOVA.md](contracts/NOVA.md) | Intent planning, Meta Llama, Elastic Agent Builder, Apify, Fetch ACP/ASI:One |
+| Nova / B | [contracts/NOVA.md](contracts/NOVA.md) | Intent planning, Meta Llama, checkpoints/briefs, Fetch ACP/ASI:One |
 | Andrew / C | [contracts/ANDREW.md](contracts/ANDREW.md) | Dashboard, API/auth, phone, Spacetime, integration, team timeline and release |
-| Nathan / optional | [contracts/NATHAN.md](contracts/NATHAN.md) | Noncritical demo data, visual/copy polish, captions/screenshots and extra backup assets |
+| Nathan / B-retrieval | [contracts/NATHAN.md](contracts/NATHAN.md) | Elastic Agent Builder retrieval and Apify article extraction, delivered to Nova |
 
-**Nathan is not on the critical path.** No required service, feature, test, recording or submission depends on his arrival.
+**Nathan works inside Nova's lane.** He owns the Elastic and Apify adapters (`searchSources`, `extractArticle`), and Nova reviews and merges them. If they are blocked at 1 PM, Nova and Andrew decide whether Nova takes them back or the track is dropped and reported.
 
 ## Shared time window
 
@@ -58,7 +58,7 @@ Workspace membership starts with user selection and can be edited explicitly. AI
 
 Create Group Project with research tabs and a native notes window -> focus it by voice -> save a checkpoint from selected sources plus a user note -> send an article brief to a real phone -> resume Group Project and show the saved next step. A title match alone does not prove the app's document contents. Measure correct target resolution and time to resume rather than claiming that fewer tabs imply better focus.
 
-Windows remains the only supported desktop platform for this demo. Josh owns A, Nova B and Andrew C; Nathan remains optional noncritical support. Meta, Elastic, Spacetime, Cartesia, Apify and Fetch.ai remain selected; sponsor eligibility still requires actual evidence and the event rules.
+Windows remains the only supported desktop platform for this demo. Josh owns A, Nova B and Andrew C; Nathan owns the Elastic and Apify adapters inside B. Meta, Elastic, Spacetime, Cartesia, Apify and Fetch.ai remain selected; sponsor eligibility still requires actual evidence and the event rules.
 
 
 ## Canonical implementation references

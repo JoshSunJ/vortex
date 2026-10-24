@@ -4,7 +4,7 @@ Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
 **Project context:** Vortex is a voice-controlled workspace manager for unfinished tasks. A named workspace collects selected browser tabs, references to still-open native windows, a user-stated goal and a checkpoint. It helps people switch tasks, preserve their place, take a selected brief to another device and resume. It is profession-agnostic; the demo is group-project research. Vortex manages the workspace around applications; arbitrary interaction inside applications and a separate tutoring platform are outside the MVP.
 
-**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan is absent at kickoff and optional support only; no required feature or milestone depends on him.
+**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan owns the Elastic and Apify adapters inside B (search and article extraction), reviewed by Nova.
 
 **Team clock:** 11 AM-10 PM. Gates: 11:30 AM scope frozen; 1 PM real control; 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
 
@@ -24,7 +24,7 @@ Branch: `feat/control`. Own `apps/desktop/`, `apps/extension/`, `native/windows/
 - 5-6:30 PM: stale target, storage, restart, duplicate-operation and cancellation checks.
 - After freeze: execution/voice fixes, three rehearsals and Windows startup/reset instructions.
 
-Depend on Nova for validated plans and Andrew for API/UI wiring; never depend on Nathan. Follow [Andrew's complete timed schedule](ANDREW.md#team-schedule). For privacy, shared fixtures, API routes and release gates, read [Andrew's contract](ANDREW.md); for planning/provider behavior read [Nova's contract](NOVA.md).
+Depend on Nova for validated plans and Andrew for API/UI wiring. Nathan's Elastic/Apify work reaches you only through Nova's services. Follow [Andrew's complete timed schedule](ANDREW.md#team-schedule). For privacy, shared fixtures, API routes and release gates, read [Andrew's contract](ANDREW.md); for planning/provider behavior read [Nova's contract](NOVA.md).
 
 ## 03 / Architecture and Windows feasibility
 
@@ -89,7 +89,7 @@ Use B's fixture plan until intelligence is ready; expose mock adapter to C on ho
 
 **Scope cap:** one Windows laptop, one Chrome profile and ordinary desktop windows. A process title match alone is never enough for a destructive action. No global key injection or arbitrary computer-use agent is needed for the main demo.
 
-**Assigned owner: Josh.** Nova supplies typed plans; Andrew supplies API/UI integration. Nathan is not a dependency.
+**Assigned owner: Josh.** Nova supplies typed plans; Andrew supplies API/UI integration. Nathan has no direct interface with the executor.
 
 ## 09 / Rules that prevent integration failures
 

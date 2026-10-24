@@ -1,10 +1,10 @@
-# Nathan - Vortex optional-support contract
+# Nathan - Vortex teammate contract
 
 Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
 **Project context:** Vortex is a voice-controlled workspace manager for unfinished tasks. A named workspace collects selected browser tabs, references to still-open native windows, a user-stated goal and a checkpoint. It helps people switch tasks, preserve their place, take a selected brief to another device and resume. It is profession-agnostic; the demo is group-project research. Vortex manages the workspace around applications; arbitrary interaction inside applications and a separate tutoring platform are outside the MVP.
 
-**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan is absent at kickoff and optional support only; no required feature or milestone depends on him.
+**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan owns the Elastic and Apify provider adapters inside B, split from Nova's lane; Nova keeps intent planning, Meta Llama, checkpoints/briefs and Fetch/ASI:One.
 
 **Team clock:** 11 AM-10 PM. Gates: 11:30 AM scope frozen; 1 PM real control; 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
 
@@ -14,40 +14,52 @@ Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
 **Read next:** [team index](../TEAM_CONTRACT.md), [agent instructions](../AGENTS.md), [wire types/execution contract](JOSH.md#wire-contract), [API/auth/sync contract](ANDREW.md#api-contract), [team schedule](ANDREW.md#team-schedule). Source numbers in migrated sections refer to [the source list](ANDREW.md#sources). Proposed architecture is not a claim of completed implementation.
 
-## Your assignment is optional
+## Your workflow - Elastic and Apify (inside B)
 
-You are not present at kickoff. Arrive when available and ask Andrew which isolated support item would help. Do not take over a required service, feature, API/auth component, sponsor integration, release test, core backup recording or submission. The demo must succeed even if you do not arrive.
+Branch: `feat/retrieval`, merged into `feat/intelligence` after Nova reviews it. Own `services/intelligence/retrieval/` (Elastic) and `services/intelligence/extract/` (Apify). Nova owns the rest of `services/intelligence/` and `services/fetch-agent/`; Andrew owns API wiring and persistence; Josh owns local effects. Do not change schemas, action kinds, routes, root scripts or dependencies outside your folders without Nova/Andrew review.
 
-Branch: `chore/demo-support`. Work in an agreed demo asset or copy/style area. Do not change schemas, action kinds, routes, credentials, provider choices, dependencies, root scripts, security settings or another teammate's unfinished implementation.
+- By 12:30 PM: Elastic Serverless project and Apify account working; blockers reported to Nova and Andrew. Agree the `searchSources` and `extractArticle` signatures with Nova.
+- By 1 PM: real Elastic Agent Builder access and one real Apify Actor run.
+- By 3 PM: opted-in workspace sources and checkpoints indexed; `searchSources` returns real source IDs and evidence excerpts so Find works by meaning, not by exact title.
+- By 5 PM: an Elastic Agent Builder tool trace and an Apify run ID whose article text feeds Nova's real phone brief.
+- 5-6:30 PM: failure cases (Elastic index delay, source unavailable, Apify timeout, private/local URL rejected, prompt injection inside article text).
+- After freeze: fixes only, saved evidence (screenshots of agent config, traces, run IDs) and exact run instructions for the README.
 
-## Choose one small task
+Read [Josh's canonical types](JOSH.md#wire-contract), [Andrew's API contract](ANDREW.md#api-contract) and [Nova's sponsor map](NOVA.md) before writing code. Follow [the complete timed schedule](ANDREW.md#team-schedule). If you are blocked at 1 PM, tell Nova and Andrew immediately so they can take the work back or drop the track and report it.
 
-1. Prepare safe public demo articles and clear sample task/tab labels. Keep optional demo data visibly separate from actual provider results; do not pass fake data off as live integration.
-2. Improve nonessential labels, spelling, spacing or colors after Andrew confirms the core screen works. Keep the existing flows and field names intact.
-3. Proofread captions or presentation wording. Claims must match actual functionality; preserve visible source links and limitations.
-4. Capture extra screenshots or make a second copy of Andrew's completed backup recording. Andrew remains responsible for the essential recording.
-5. Check README readability and suggest changes. The required owners retain setup accuracy and submission responsibility.
+## What you build
 
-## Arrival workflow
+### 1. Elastic Agent Builder on Serverless
 
-- Read the team index and this file; tell Andrew your available time.
-- Pick one bounded task with a clear file boundary and agree it with Andrew.
-- Use an isolated small commit. Do not edit other owners' code or run updates to dependencies.
-- Show Andrew the exact changes for review. If there is no time to review them safely, leave them unmerged.
-- At or after 6:30 PM, limit help to proofing/captions/screenshots or a tiny approved visual fix. After 9 PM, do not change implementation or dependencies; help with the existing demo only.
+Index opted-in source metadata and checkpoints. Create a scoped retrieval tool in an Agent Builder agent and return source IDs and evidence excerpts. Enforce search filters (user, workspace, opt-in) in the trusted service/tool, never in prompts. Plain Elasticsearch search is not enough for the Elastic track: you need the agent configuration and a real tool trace.
+
+### 2. Apify article tool
+
+Run Website Content Crawler on one explicitly requested public HTTP(S) article. Cap it to one page and a 60-second run budget; poll, and cancel on timeout. Reject private/local addresses and redirects to them. No cookies, paywall bypass or logged-in crawling, and never crawl all tabs. Keep source provenance (URL, run ID, fetch time) with the text.
+
+### Interfaces you provide
+
+`searchSources(query, scope)` and `extractArticle(url)`. Both return schema-validated objects with provenance and operation IDs. Nova's `buildBrief`, `createCheckpoint` and the ASI:One agent call these; do not build a separate brief or summary path.
+
+## Acceptance demo
+
+Find an article by meaning with a visible Elastic tool trace, then extract that article through a real Apify run whose ID appears with the brief Nova sends to the phone. Fallbacks and fixtures are labeled and do not count as sponsor evidence.
 
 ## Definition of done
 
-- The optional item is complete, easy to inspect and does not break the known-good workflow.
-- No credentials/private browsing content are in assets or recordings.
-- No fixture is presented as a real sponsor call.
-- Andrew knows what changed, what you checked and whether anything remains.
-- Your task can be omitted without affecting any required milestone.
+- Real Elastic trace and Apify run ID are captured and saved for submission.
+- Failure cases above return typed errors instead of crashing the journey.
+- No credentials or private browsing content in code, logs, assets or recordings.
+- Nova has reviewed and merged your adapters; Andrew knows what is live and what is not.
+
+## If time is left over
+
+Help Andrew with demo articles, captions, screenshots or README proofreading. After 9 PM, do not change implementation or dependencies.
 
 ## People and handoffs
 
 - [Josh](JOSH.md): Windows/browser control and Cartesia voice.
-- [Nova](NOVA.md): semantic planning, Meta, Elastic, Apify and Fetch/ASI:One.
+- [Nova](NOVA.md): intent planning, Meta Llama, checkpoints/briefs and Fetch/ASI:One; reviews your adapters.
 - [Andrew](ANDREW.md): dashboard, phone, API/auth, Spacetime, integration and demo readiness.
 
-The [demo script, release gates and submission checklist](ANDREW.md#release-gates) are owned by Andrew with Josh/Nova. They are reference context for your optional assets, not an assignment of critical work to you. The [source list](ANDREW.md#sources) is the evidence reference. Do not assert first-of-its-kind status or guaranteed prize eligibility.
+The [source list](ANDREW.md#sources) is the evidence reference. Do not assert first-of-its-kind status or guaranteed prize eligibility.

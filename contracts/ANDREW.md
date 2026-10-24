@@ -4,7 +4,7 @@ Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
 **Project context:** Vortex is a voice-controlled workspace manager for unfinished tasks. A named workspace collects selected browser tabs, references to still-open native windows, a user-stated goal and a checkpoint. It helps people switch tasks, preserve their place, take a selected brief to another device and resume. It is profession-agnostic; the demo is group-project research. Vortex manages the workspace around applications; arbitrary interaction inside applications and a separate tutoring platform are outside the MVP.
 
-**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan is absent at kickoff and optional support only; no required feature or milestone depends on him.
+**Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan owns the Elastic and Apify adapters inside B (search and article extraction), reviewed by Nova.
 
 **Team clock:** 11 AM-10 PM. Gates: 11:30 AM scope frozen; 1 PM real control; 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
 
@@ -25,7 +25,7 @@ Branch: `feat/continuity`. Own `apps/dashboard/`, `apps/phone/`, authenticated A
 - 5-6:30 PM: cross-user denial, pairing replay, reconnect and full-journey tests.
 - At 8 PM: hold a passing integrated release candidate. By 9:45 PM: final demo, backup recording, setup notes and sponsor evidence.
 
-Read [Josh's wire types/executor rules](JOSH.md#wire-contract) and [Nova's sponsor/planning contract](NOVA.md) before wiring consumers. Required testing, submission and recording remain your responsibility with Josh/Nova; Nathan may provide extras but is never a release dependency.
+Read [Josh's wire types/executor rules](JOSH.md#wire-contract) and [Nova's sponsor/planning contract](NOVA.md) before wiring consumers. Required testing, submission and recording remain your responsibility with Josh/Nova/Nathan; Nathan owns Elastic/Apify evidence.
 
 ## 06 / Andrew (C) - dashboard, phone and integration
 
@@ -62,28 +62,28 @@ A real phone receives the chosen brief, opens its original source, records read 
 
 ## 07 / 11 AM-10 PM team schedule
 
-### Finish before the deadline, with no dependency on Nathan
+### Finish before the deadline
 
 Times below use Josh's supplied team clock, without timezone conversion. There are eleven hours from 11 AM to 10 PM. **The release candidate must work by 8 PM and the demo must be ready by 9:45 PM.** The final fifteen minutes are a buffer, not planned feature work. Keep organizer submission time separate and verify it independently.
 
-| Time | Josh / A | Nova / B | Andrew / C | Gate / expected evidence |
-| --- | --- | --- | --- | --- |
-| **11:00-11:30 AM** | Freeze supported tab/window resources, primary targets and explicit executor actions | Freeze the six commands; provider checks and Fetch registration | Freeze Workspace type, API/fixtures and one group-project demo story | **11:30 AM:** operating boundary, schemas and demo story agreed |
-| **11:30 AM-1:00 PM** | Real Chrome inventory, tab activation and native window focus; Cartesia smoke test | Typed command -> plan; Llama/Elastic/Apify smoke tests; ACP agent setup | Dashboard against fixtures; authenticated API endpoints; private phone subscription and pairing | **1 PM:** a real command reaches the correct real tab/window; every provider has access or an explicit blocker |
-| **1:00-3:00 PM** | Connect voice to workspace focus/resume; validate saved primary tab/native window; switch between two real workspaces | Resolve create/focus/resume and clarify ambiguous names; start source/provider path in parallel | Persist workspace membership/goal, show workspace cards and saved checkpoint/note; wire live resource adapter | **3 PM:** create/save workspace -> switch away -> resume matching live targets on actual laptop |
-| **3:00-5:00 PM** | Connect source-backed checkpoint/phone flow to voice; reopen checkpoint-bound URLs and report missing native windows | Real Llama checkpoint, Elastic retrieval and Apify article brief; collect provider traces; connect ASI:One identity | Real paired-phone delivery/receipt, progress, preview/approval/revocation and teammate brief | **5 PM:** grounded checkpoint + source-linked brief on a real phone + real traces or explicit sponsor blockers |
-| **5:00-6:30 PM** | Test stale/missing members, focus denied, restart, duplicate requests and cancellation | Complete ASI:One create/find/focus/checkpoint/send/resume using the same services; grounding and timeout checks | Cross-user denial, pairing replay/expiry, reconnect and complete laptop/phone journey | **6:30 PM:** ASI:One parity and essential failure cases pass; feature freeze |
-| **6:30-8:00 PM** | Fix execution/voice bugs only | Fix provider/agent bugs only | Integrate fixes and verify full phone/desktop journey | **8 PM release candidate:** end-to-end journey works on actual demo devices |
-| **8:00-9:00 PM** | Rehearse controls and reset routine | Rehearse ASI:One + sponsor evidence; verify sources | Lead three timed rehearsals; capture essential backup recording and setup notes | Three passing rehearsals or a reduced working demo; all failures have an honest explanation |
-| **9:00-9:45 PM** | Freeze known-good build and document Windows startup/reset | Finish real tool evidence and agent/run instructions | Final README/image/demo recording; validate from clean startup | **9:45 PM: demo-ready.** One pinned revision, recording, evidence and recovery instructions available |
-| **9:45-10:00 PM** | Stand by; critical fixes only if a demonstrated blocker exists | Stand by; no model/dependency swaps | Hold final working artifact and backup copy | Buffer only; do not start new implementation |
+| Time | Josh / A | Nova / B | Nathan / B-retrieval | Andrew / C | Gate / expected evidence |
+| --- | --- | --- | --- | --- | --- |
+| **11:00-11:30 AM** | Freeze supported tab/window resources, primary targets and explicit executor actions | Freeze the six commands; Llama check and Fetch registration | Elastic Serverless and Apify account checks; agree `searchSources`/`extractArticle` signatures with Nova | Freeze Workspace type, API/fixtures and one group-project demo story | **11:30 AM:** operating boundary, schemas and demo story agreed |
+| **11:30 AM-1:00 PM** | Real Chrome inventory, tab activation and native window focus; Cartesia smoke test | Typed command -> plan; Llama smoke test; ACP agent setup | Elastic Agent Builder smoke test; one real Apify Actor run | Dashboard against fixtures; authenticated API endpoints; private phone subscription and pairing | **1 PM:** a real command reaches the correct real tab/window; every provider has access or an explicit blocker |
+| **1:00-3:00 PM** | Connect voice to workspace focus/resume; validate saved primary tab/native window; switch between two real workspaces | Resolve create/focus/resume and clarify ambiguous names; start source/provider path in parallel | Index opted-in sources/checkpoints; `searchSources` returns real IDs and excerpts (Find by meaning) | Persist workspace membership/goal, show workspace cards and saved checkpoint/note; wire live resource adapter | **3 PM:** create/save workspace -> switch away -> resume matching live targets on actual laptop |
+| **3:00-5:00 PM** | Connect source-backed checkpoint/phone flow to voice; reopen checkpoint-bound URLs and report missing native windows | Real Llama checkpoint and article brief from Nathan's results; collect Llama traces; connect ASI:One identity | Elastic tool trace and real Apify article run feeding the brief; collect traces | Real paired-phone delivery/receipt, progress, preview/approval/revocation and teammate brief | **5 PM:** grounded checkpoint + source-linked brief on a real phone + real traces or explicit sponsor blockers |
+| **5:00-6:30 PM** | Test stale/missing members, focus denied, restart, duplicate requests and cancellation | Complete ASI:One create/find/focus/checkpoint/send/resume using the same services; grounding and timeout checks | Elastic index delay, source unavailable, Apify timeout, private URL, source prompt injection | Cross-user denial, pairing replay/expiry, reconnect and complete laptop/phone journey | **6:30 PM:** ASI:One parity and essential failure cases pass; feature freeze |
+| **6:30-8:00 PM** | Fix execution/voice bugs only | Fix Llama/agent bugs only | Fix Elastic/Apify bugs only | Integrate fixes and verify full phone/desktop journey | **8 PM release candidate:** end-to-end journey works on actual demo devices |
+| **8:00-9:00 PM** | Rehearse controls and reset routine | Rehearse ASI:One + Llama/Fetch evidence | Rehearse Elastic/Apify evidence; verify sources | Lead three timed rehearsals; capture essential backup recording and setup notes | Three passing rehearsals or a reduced working demo; all failures have an honest explanation |
+| **9:00-9:45 PM** | Freeze known-good build and document Windows startup/reset | Finish real tool evidence and agent/run instructions | Save Elastic/Apify evidence and run instructions | Final README/image/demo recording; validate from clean startup | **9:45 PM: demo-ready.** One pinned revision, recording, evidence and recovery instructions available |
+| **9:45-10:00 PM** | Stand by; critical fixes only if a demonstrated blocker exists | Stand by; no model/dependency swaps | Stand by; no provider changes | Hold final working artifact and backup copy | Buffer only; do not start new implementation |
 
-**Nathan, whenever he arrives:** Andrew offers one isolated optional task: improve sample/demo labels, adjust nonessential spacing/colors, proofread captions, capture extra screenshots, or make a second copy of an already completed backup recording. No milestone above waits for him, and his changes must not destabilize the frozen build.
+**Nathan:** works on `feat/retrieval` and merges into `feat/intelligence` through Nova's review. If the Elastic/Apify adapters are blocked at 1 PM, Nova and Andrew decide whether Nova takes them back or the track is dropped and reported. Spare time goes to demo articles, captions and screenshots.
 
 ### Cut rules and ownership
 
 - **1 PM:** if a provider is inaccessible, its owner investigates within the current block and makes the blocker visible. No service silently disappears from sponsor claims.
-- **3 PM:** if saved workspace -> switch -> resume is incomplete, all three owners prioritize that path. Cut layout and cleanup work; do not broaden app control.
+- **3 PM:** if saved workspace -> switch -> resume is incomplete, all owners prioritize that path. Cut layout and cleanup work; do not broaden app control.
 - **5 PM:** choose the demonstrable scope. Preserve the six bounded workspace commands, grounded checkpoint, real phone brief and source links. Missing phone delivery becomes a release blocker for the next block. Keep all selected sponsor integrations only where real evidence exists. If Fetch parity or social sharing is incomplete, state the relevant track gap.
 - **6:30 PM:** stop feature work. Cut window layout changes, archive/closing tabs, automatic stale-tab scans, phone audio and offline caching before compromising the core path.
 - **8 PM:** if necessary, freeze a smaller honest live journey and record it; a fallback is labeled and never presented as a working sponsor integration.
@@ -91,7 +91,7 @@ Times below use Josh's supplied team clock, without timezone conversion. There a
 
 ### Git and integration rules
 
-Andrew coordinates merges/root configuration. Josh owns execution contracts; Nova and Andrew review shared interface changes. Work in `feat/control`, `feat/intelligence` and `feat/continuity`; Nathan may use `chore/demo-support`. Create these branches from the current default-branch head once work begins; these are proposed workflow names, not claims that branches exist. Merge small working slices at the gates and keep all owners updated. Nathan never changes critical contracts or credentials. Fixtures are labeled and never count as live evidence.
+Andrew coordinates merges/root configuration. Josh owns execution contracts; Nova and Andrew review shared interface changes. Work in `feat/control`, `feat/intelligence`, `feat/retrieval` (Nathan, merged via Nova) and `feat/continuity`. Create these branches from the current default-branch head once work begins; these are proposed workflow names, not claims that branches exist. Merge small working slices at the gates and keep all owners updated. Nathan changes shared contracts only through Nova's review. Fixtures are labeled and never count as live evidence.
 
 ## 08 / Version 1 API and authority boundaries
 
@@ -166,7 +166,7 @@ Delivery defaults to the user's paired device with 24-hour expiry; cross-person 
 
 #### Release gate: test the failures that matter
 
-Josh: changed URL between preview/execute; Windows focus denied; checkpoint storage failure; restart mid-operation; duplicate execute; cancellation after first action. Archive/close checks apply only if that deferred capability is implemented later. Nova: ambiguous title; invalid model JSON; source unavailable; source prompt injection; Elastic index delay; real ASI:One workflow parity. Andrew: wrong-user access; pairing expiry/replay; revoked device; delivery retry; phone reconnect; remote request while laptop offline.
+Josh: changed URL between preview/execute; Windows focus denied; checkpoint storage failure; restart mid-operation; duplicate execute; cancellation after first action. Archive/close checks apply only if that deferred capability is implemented later. Nova: ambiguous title; invalid model JSON; real ASI:One workflow parity. Nathan: source unavailable; source prompt injection; Elastic index delay; Apify timeout; private/local URL rejected. Andrew: wrong-user access; pairing expiry/replay; revoked device; delivery retry; phone reconnect; remote request while laptop offline.
 
 **Suggested targets, not measured claims:** 18/20 commands resolve or correctly clarify; zero wrong-target destructive actions; completed voice command to feedback p95 under five seconds excluding crawling; phone delivery p95 under three seconds after brief readiness. Measure on the actual network and disclose sample size.
 
@@ -174,7 +174,7 @@ Josh: changed URL between preview/execute; Windows focus denied; checkpoint stor
 
 One coherent demonstration of intent -> action -> context recovery across devices, with a useful social handoff. FaceTimeOS is an inspiration for remote access, not a claimed original invention [13]. Voice tab control, summaries and sync each exist; the proposed distinction is a reliable, source-backed task checkpoint and continuation experience.
 
-**Honest assessment:** strong demo potential if the end-to-end path works. Six services plus OS integration is a reliability risk for three available builders in eleven hours. Nathan's optional help cannot reduce the required owners' responsibilities. More integrations do not imply a better project. A polished real workflow beats unsupported breadth; no plan can guarantee a win.
+**Honest assessment:** strong demo potential if the end-to-end path works. Six services plus OS integration is a reliability risk for four builders in eleven hours. More integrations do not imply a better project. A polished real workflow beats unsupported breadth; no plan can guarantee a win.
 
 ## 12 / Kickoff, submission and reference links
 
@@ -182,7 +182,7 @@ One coherent demonstration of intent -> action -> context recovery across device
 
 #### Start here
 
-Give every Claude/Codex session its named teammate contract plus the root AGENTS.md and TEAM_CONTRACT.md index. State Josh/A, Nova/B, Andrew/C or Nathan/optional support, the working repository, current time on the supplied team clock and working SDK versions. Ask it to read existing code before editing. The technical architecture is a proposal and the named workflow is the current team agreement; the repository exists, but integrations are not claimed implemented.
+Give every Claude/Codex session its named teammate contract plus the root AGENTS.md and TEAM_CONTRACT.md index. State Josh/A, Nova/B, Nathan/B-retrieval or Andrew/C, the working repository, current time on the supplied team clock and working SDK versions. Ask it to read existing code before editing. The technical architecture is a proposal and the named workflow is the current team agreement; the repository exists, but integrations are not claimed implemented.
 
 At 11 AM kickoff: confirm Josh/A, Nova/B and Andrew/C are ready; choose the real demo article and task; create shared schemas/fixtures; establish a single integration lead; verify accounts/credits; agree consent wording; confirm organizer deadlines and sponsor submission steps. Model choice does not change interface obligations.
 
@@ -231,7 +231,9 @@ native/windows/                Josh/A: C# window helper and native messaging hos
 apps/dashboard/                Andrew/C: task/checkpoint views, composed into desktop
 apps/phone/                    Andrew/C: mobile web reader and pairing
 services/api/                  Andrew/C: auth, routing, delivery; Nova/B owns intelligence route logic
-services/intelligence/         Nova/B: Llama, Elastic, Apify, planning
+services/intelligence/         Nova/B: Llama, planning, checkpoints/briefs
+services/intelligence/retrieval/  Nathan: Elastic Agent Builder adapter
+services/intelligence/extract/    Nathan: Apify article adapter
 services/fetch-agent/          Nova/B: Python ACP/ASI:One adapter
 services/sync/                 Andrew/C: Spacetime module/reducers/views
 packages/contracts/           Josh edits; Nova+Andrew review; TS/Zod + generated JSON Schema
@@ -239,7 +241,7 @@ packages/fixtures/             Andrew coordinates; all lanes contribute
 docs/                          Andrew coordinates; all lanes update their runbooks
 ```
 
-Use a workspace package manager and one lockfile after a real dependency smoke test. C coordinates root scripts and config. Suggested branches: feat/control, feat/intelligence, feat/continuity. These are proposed names, not existing branches. Never reset another person's work. Interface changes require matching TS/Zod schemas, JSON Schema for Python, fixtures, tests and a contract version update in one reviewed change. Additive optional fields can be a minor change; breaking changes require a new major contract.
+Use a workspace package manager and one lockfile after a real dependency smoke test. C coordinates root scripts and config. Suggested branches: feat/control, feat/intelligence, feat/retrieval, feat/continuity. These are proposed names, not existing branches. Never reset another person's work. Interface changes require matching TS/Zod schemas, JSON Schema for Python, fixtures, tests and a contract version update in one reviewed change. Additive optional fields can be a minor change; breaking changes require a new major contract.
 
 
 <a id="workspace-api"></a>
@@ -340,11 +342,11 @@ Tests should use adapter boundaries for unit checks and actual Windows/Chrome/ph
 ## Appendix G - Named readiness and final checklist
 
 - Josh / A: Cartesia microphone/transcription/reply; actual native focus; extension registration; local executor journal.
-- Nova / B: Meta model access/model ID; Elastic Serverless Agent Builder and tools; Apify Actor run; Agentverse registration and ACP; ASI:One identity link and full workflow.
+- Nova / B: Meta model access/model ID; Agentverse registration and ACP; ASI:One identity link and full workflow.
+- Nathan / B-retrieval: Elastic Serverless Agent Builder and tools with a real trace; Apify Actor run ID used in a real brief.
 - Andrew / C: Spacetime deployment and private access; phone pairing and real delivery; second-user handoff; developer evidence view.
 - All: confirm sponsor-specific instructions. Meta social-theme fit and precise Spacetime prize criteria need sponsor validation; the public event list is not a full implementation specification.
 - Fetch-specific: use its submission agent as well as Devpost, include public setup README and agent address, required innovationlab/hackathon badges and its requested demo video. Recheck linked instructions before submitting. Prize amounts differ between public sources, so this document deliberately does not quote them.
-- Nathan (optional only): prepared demo data, captions/screenshots, visual polish or an extra recording copy. Andrew retains essential demo/recording responsibility; do not wait for Nathan.
 - Human team: monitor the 11 AM-10 PM schedule, keep a 9:45 PM demo-ready target, choose demo data, verify accepted/checked-in status and deadline, submit project image/repository/demo and track selections. This package neither publishes nor registers anything.
 
-The 9:45 PM readiness target is owned by Josh, Nova and Andrew even if Nathan never arrives. The plan favors a coherent working system. If a required capability cannot be completed, report it plainly and narrow the submission claims. Do not use a sponsor logo as a substitute for a real integration or say the app is the first of its kind.
+The 9:45 PM readiness target is owned by Josh, Nova, Nathan and Andrew. The plan favors a coherent working system. If a required capability cannot be completed, report it plainly and narrow the submission claims. Do not use a sponsor logo as a substitute for a real integration or say the app is the first of its kind.
