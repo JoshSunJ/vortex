@@ -1,4 +1,4 @@
-// Canonical wire types, schema 1.0. Source: contracts/JOSH.md Appendix C ("wire-contract").
+// Canonical wire types, schema 1.0, document revision 1.3. Source: contracts/JOSH.md Appendix C ("wire-contract").
 // Owner: Josh (A); Nova (B) and Andrew (C) review. Field names, states and action kinds are copied
 // from the contract as written; change them only through a reviewed contract update.
 // Size bounds come from contracts/ANDREW.md Appendix D validation bounds.
@@ -109,6 +109,50 @@ export const Task = z.object({
 });
 export type Task = z.infer<typeof Task>;
 
+// Revision 1.3, additive. Workspace is the full entity; Task is its legacy projection.
+// Task.id, Workspace.id and every existing taskId field name the same entity.
+export const Workspace = Task.extend({
+  name: z.string().min(1).max(100),
+  deviceId: Id,
+  revision: z.number().int().nonnegative(),
+  primaryTabId: Id.optional(),
+  primaryWindowId: Id.optional(),
+  latestCheckpointId: Id.optional(),
+  createdAt: ISODate,
+});
+export type Workspace = z.infer<typeof Workspace>;
+
+const UserNote = z.string().max(2_000);
+
+/** High-level service commands, not generic OS executor permissions. */
+export const WorkspaceCommand = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("find"), query: z.string().min(1).max(2_000), workspaceId: Id.optional() }),
+  z.strictObject({
+    kind: z.literal("create_workspace"),
+    name: Workspace.shape.name,
+    goal: Task.shape.goal,
+    deviceId: Id,
+    selectedResourceIds: z.array(Id).max(100),
+    primaryTabId: Id.optional(),
+    primaryWindowId: Id.optional(),
+  }),
+  z.strictObject({ kind: z.literal("focus_workspace"), workspaceId: Id }),
+  z.strictObject({
+    kind: z.literal("save_checkpoint"),
+    workspaceId: Id,
+    sourceIds: z.array(Id).max(5),
+    userNote: UserNote.optional(),
+  }),
+  z.strictObject({
+    kind: z.literal("send_brief"),
+    workspaceId: Id.optional(),
+    sourceIds: z.array(Id).min(1).max(5),
+    recipient: z.union([z.strictObject({ deviceId: Id }), z.strictObject({ userId: Id })]),
+  }),
+  z.strictObject({ kind: z.literal("resume_workspace"), workspaceId: Id }),
+]);
+export type WorkspaceCommand = z.infer<typeof WorkspaceCommand>;
+
 export const Source = z.object({
   id: Id,
   resourceId: Id.optional(),
@@ -132,7 +176,8 @@ export type GroundedPoint = z.infer<typeof GroundedPoint>;
 
 export const Checkpoint = z.object({
   id: Id,
-  taskId: Id,
+  taskId: Id, // Workspace.id; field retained for compatibility
+  userNote: UserNote.optional(), // explicit user-provided context, never inferred
   createdAt: ISODate,
   version: z.number().int().positive(),
   resourceSnapshots: z.array(Resource),
@@ -199,7 +244,13 @@ export const Action = z.discriminatedUnion("kind", [
     target: Target,
     state: z.enum(["minimized", "normal", "maximized"]),
   }),
-  z.strictObject({ kind: z.literal("create_checkpoint"), taskId: Id, sourceIds: z.array(Id), targets: z.array(Target) }),
+  z.strictObject({
+    kind: z.literal("create_checkpoint"),
+    taskId: Id,
+    sourceIds: z.array(Id),
+    userNote: UserNote.optional(),
+    targets: z.array(Target),
+  }),
   z.strictObject({ kind: z.literal("archive_tabs"), targets: z.array(Target), checkpointId: Id }),
   z.strictObject({
     kind: z.literal("open_saved_url"),
@@ -223,19 +274,32 @@ export const Action = z.discriminatedUnion("kind", [
 ]);
 export type Action = z.infer<typeof Action>;
 
-export const Plan = z.object({
-  kind: z.literal("plan"),
-  id: Id,
-  commandId: Id,
-  deviceId: Id,
-  snapshotRevision: z.number().int().nonnegative(),
-  actions: z.array(z.strictObject({ actionId: Id, action: Action })).max(10),
-  explanation: z.string().max(2_000),
-  approvalRequired: z.boolean(),
-  planHash: z.string().min(1).max(200),
-  createdAt: ISODate,
-  expiresAt: ISODate,
-});
+export const Plan = z
+  .object({
+    kind: z.literal("plan"),
+    id: Id,
+    commandId: Id,
+    workspaceId: Id.optional(), // additive link to the target workspace
+    deviceId: Id,
+    snapshotRevision: z.number().int().nonnegative(),
+    finalFocusResourceId: Id.optional(), // validated selected target; final focus action
+    actions: z.array(z.strictObject({ actionId: Id, action: Action })).max(10),
+    explanation: z.string().max(2_000),
+    approvalRequired: z.boolean(),
+    planHash: z.string().min(1).max(200),
+    createdAt: ISODate,
+    expiresAt: ISODate,
+  })
+  .refine(
+    (plan) => {
+      if (plan.finalFocusResourceId === undefined) return true;
+      // The last focus/activation action must target finalFocusResourceId.
+      const focusActions = plan.actions.filter((a) => a.action.kind === "activate_tab" || a.action.kind === "focus_window");
+      const last = focusActions.at(-1)?.action;
+      return last !== undefined && "target" in last && last.target.resourceId === plan.finalFocusResourceId;
+    },
+    { message: "finalFocusResourceId must be the target of the plan's last focus/activation action", path: ["finalFocusResourceId"] },
+  );
 export type Plan = z.infer<typeof Plan>;
 
 export const Clarification = z.object({
@@ -273,6 +337,7 @@ export const ActionResult = z.object({
   actionId: Id,
   status: z.enum(["pending", "running", "succeeded", "failed", "skipped", "unknown"]),
   code: ErrorCode.optional(),
+  workspaceId: Id.optional(),
   checkpointId: Id.optional(),
   briefId: Id.optional(),
   deliveryId: Id.optional(),
