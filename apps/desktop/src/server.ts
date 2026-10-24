@@ -5,6 +5,7 @@ import { Id, Workspace, Plan, SCHEMA_VERSION } from "@vortex/contracts";
 import { ControlEngine } from "./control.ts";
 import { ControlError, ensure } from "./errors.ts";
 import { LocalWorkspaces } from "./workspaces.ts";
+import { LocalCommands } from "./commands.ts";
 
 export type ServerOptions = { token: string; extensionId?: string; onExtensionIdChanged?: (id: string) => void };
 const Execute = z.strictObject({ operationId: Id, expectedRevision: z.number().int().nonnegative(), approvalId: Id.optional() });
@@ -16,6 +17,7 @@ export function createControlServer(engine: ControlEngine, options: ServerOption
   ensure(options.token.length >= 32, "VALIDATION_ERROR", "Control token must be at least 32 characters.");
   ensure(!options.extensionId || /^[a-p]{32}$/.test(options.extensionId), "VALIDATION_ERROR", "Use the exact Chrome/Edge extension ID.");
   const workspaces = new LocalWorkspaces(engine);
+  const commands = new LocalCommands(engine);
   const server = createServer(async (req, res) => {
     const requestId = randomUUID();
     res.setHeader("Cache-Control", "no-store");
@@ -55,6 +57,7 @@ export function createControlServer(engine: ControlEngine, options: ServerOption
       else if (req.method === "GET" && url.pathname === "/control/workspaces") result = workspaces.list();
       else if (req.method === "POST" && url.pathname === "/control/workspaces") result = await workspaces.create(body);
       else if (req.method === "POST" && url.pathname === "/control/checkpoints") result = await workspaces.save(body);
+      else if (req.method === "POST" && url.pathname === "/control/commands/preview") result = await commands.resolve(body);
       else if (req.method === "GET" && url.pathname === "/control/operations") result = workspaces.operations();
       else if (req.method === "POST" && url.pathname === "/control/workspace-preview") {
         const value = z.strictObject({ workspaceId: Id, mode: z.enum(["focus", "resume"]) }).parse(body);
