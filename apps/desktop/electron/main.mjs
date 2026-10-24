@@ -4,6 +4,8 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { parseEnv } from "node:util";
+import { CartesiaVoice, VoiceError } from "./voice.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
@@ -12,6 +14,12 @@ const configPath = resolve(desktop, ".vortex/control.json");
 const extensionPath = resolve(repo, "apps/extension");
 const uiPath = resolve(desktop, "ui/index.html");
 const uiUrl = pathToFileURL(uiPath).href;
+const voice = new CartesiaVoice(() => {
+  const fromEnvironment = process.env.CARTESIA_API_KEY?.trim();
+  if (fromEnvironment) return fromEnvironment;
+  try { return parseEnv(readFileSync(resolve(desktop, ".env.local"), "utf8")).CARTESIA_API_KEY?.trim() || undefined; }
+  catch { return undefined; }
+});
 let window;
 let backend;
 let startupError;
@@ -37,11 +45,17 @@ async function request(path, body) {
   return response.json();
 }
 function localResult(data) { return { schemaVersion: "1.0", requestId: randomUUID(), ok: true, data }; }
-function localError(message) { return { schemaVersion: "1.0", requestId: randomUUID(), ok: false, error: { code: "DEVICE_OFFLINE", message, retryable: true } }; }
+function localError(message, code = "DEVICE_OFFLINE") { return { schemaVersion: "1.0", requestId: randomUUID(), ok: false, error: { code, message, retryable: ["DEVICE_OFFLINE", "PROVIDER_TIMEOUT"].includes(code) } }; }
 function id(value) { if (typeof value !== "string" || !/^[0-9a-f-]{36}$/i.test(value)) throw Error("Invalid resource identifier."); return value; }
 
 async function startBackend() {
-  try { if ((await request("/control/status")).ok) return; } catch {}
+  try {
+    if ((await request("/control/status")).ok) {
+      const probe = await request("/control/commands/preview", { text: "help" });
+      if (probe.ok) return;
+      throw Error("Stop the older Vortex controller on port 8790, then reopen this app.");
+    }
+  } catch (error) { if (error.message?.startsWith("Stop the older")) throw error; }
   const node = process.env.VORTEX_NODE_PATH;
   if (!node) throw Error("Start Vortex using npm run desktop -w @vortex/desktop so its Node runtime is available.");
   backend = spawn(node, ["--import", "tsx", resolve(desktop, "src/cli.ts"), "start"], { cwd: repo, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env } });
@@ -74,6 +88,14 @@ const methods = {
     return request(`/control/plans/${planId}/execute`, { operationId: randomUUID(), expectedRevision, approvalId: approval.data.approvalId });
   },
   saveCheckpoint: value => request("/control/checkpoints", value),
+  previewCommand: text => request("/control/commands/preview", { text }),
+  voiceStatus: () => localResult(voice.status()),
+  beginVoiceCapture: value => {
+    if (value?.consent !== true) throw new VoiceError("FORBIDDEN", "Agree to send this recording to Cartesia first.");
+    return localResult(voice.arm());
+  },
+  transcribeVoice: async value => localResult(await voice.transcribe(value)),
+  cancelVoice: captureId => localResult(voice.cancel(captureId)),
   listOperations: () => request("/control/operations"),
   setExtensionId: extensionId => request("/control/settings/extension", { extensionId }),
   copyBridgeToken: () => { clipboard.writeText(config().token); return localResult({ copied: true }); },
@@ -88,14 +110,19 @@ for (const [name, method] of Object.entries(methods)) {
   ipcMain.handle(`vortex:${name}`, async (event, ...args) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== uiUrl) return localError("Request came from an untrusted page.");
     if (startupError) return localError(startupError);
-    try { return await method(...args); } catch { return localError("The local action could not be completed. Refresh the app and try again."); }
+    try { return await method(...args); } catch (error) {
+      return error instanceof VoiceError ? localError(error.message, error.code) : localError("The local action could not be completed. Refresh the app and try again.");
+    }
   });
 }
 
 // Let the ESM entry module finish before waiting for Electron's ready event.
 app.whenReady().then(async () => {
-session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
-session.defaultSession.setPermissionCheckHandler(() => false);
+const trustedMedia = (contents, details) => Boolean(window && contents === window.webContents && contents.getURL() === uiUrl && details.isMainFrame === true && details.requestingUrl === uiUrl && voice.canRecord());
+session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
+  callback(permission === "media" && trustedMedia(contents, details) && details.mediaTypes?.length === 1 && details.mediaTypes[0] === "audio");
+});
+session.defaultSession.setPermissionCheckHandler((contents, permission, _origin, details) => permission === "media" && details.mediaType === "audio" && trustedMedia(contents, details));
 window = new BrowserWindow({
   width: 1280, height: 850, minWidth: 1020, minHeight: 700,
   title: "Vortex - Your work, ready to resume", backgroundColor: "#09121d", autoHideMenuBar: true, show: false,
