@@ -169,3 +169,30 @@ bodies. It has no internal retries: the shared helper owns the two-call budget a
 deadlines. 401/403 become sanitized FORBIDDEN; 429 stops with CONTENT_UNAVAILABLE.
 The client cannot enforce Google account billing status; confirm Free tier before
 live use. See README for readiness and explicit synthetic live-check commands.
+
+## API integration slice
+
+The `codex/owner-b-api-integration` branch adds `src/api-planner.ts` as an
+implementation of Andrew's existing `Services.createPlan` method for bounded
+workspace focus/resume. It uses authenticated shared inventory/workspace services,
+canonical command/response schemas, stale-state checks and duplicate-name
+clarification. It delegates plan creation and preserves the stored plan/hash;
+it does not approve or execute actions. Other command kinds receive guidance to
+their dedicated service/form rather than a canned focus plan.
+
+`src/canonical-content.ts` binds existing content generation to the actual shared
+schemas. Canonical compatibility is now tested, using synthetic content and a
+mock model/consent policy. Real model access was verified separately; this slice
+does not call any provider or persist/deliver drafts.
+
+See [API_INTEGRATION.md](API_INTEGRATION.md) and run
+`node --import tsx services/intelligence/api-demo.mjs` with Node 24+. This is an
+in-process MOCK demonstration through the actual authenticated API and canonical
+validators. The dependent API/contracts/UI are imported unchanged from Josh's
+published `feat/control` at `a270752`. No default API server or Electron UI
+entrypoint was rewired; app hookup remains coordinated with Andrew/Josh.
+
+Verification: TypeScript check passed; shared TS suites plus 13 new integration
+tests passed (86 tests total); legacy B Node suite passed 85 with one Windows
+symlink-privilege skip. Loopback server tests require local communication permission
+in the Codex sandbox. No package or model versions were changed.
