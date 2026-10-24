@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Vortex Briefs</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="screen">
+    <header class="top">
+      <div class="brand">Vortex</div>
+      <span id="conn" class="chip">Connecting…</span>
+    </header>
+
+    <div id="banner" class="banner" hidden>Disconnected — reconnecting…</div>
+
+    <section id="state-connecting" class="card state">
+      <p class="big">Connecting…</p>
+    </section>
+
+    <section id="state-unpaired" class="card state" hidden>
+      <p class="big">Not paired yet</p>
+      <p>Pair this phone from the laptop. Your identity is:</p>
+      <p><code id="identity-short" class="ident"></code></p>
+      <details>
+        <summary>Show full identity</summary>
+        <code id="identity-full" class="ident full"></code>
+      </details>
+      <p class="muted small">Already paired? Briefs appear here as soon as one is sent.</p>
+    </section>
+
+    <section id="state-empty" class="card state" hidden>
+      <p class="big">No briefs yet</p>
+      <p class="muted">Send one from the laptop and it will show up here.</p>
+    </section>
+
+    <ul id="briefs" class="briefs" hidden></ul>
+
+    <footer class="muted small foot">
+      <span id="foot-identity"></span>
+      <span>Demo build: sample briefs may be FIXTURE data.</span>
+    </footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

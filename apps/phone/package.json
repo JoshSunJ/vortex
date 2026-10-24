@@ -1,0 +1,15 @@
+{
+  "name": "@vortex/phone",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --format=esm --target=es2022 --outfile=public/app.js",
+    "start": "npm run build && node server.mjs"
+  },
+  "dependencies": {
+    "spacetimedb": "2.13.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
