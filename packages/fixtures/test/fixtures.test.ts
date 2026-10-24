@@ -19,6 +19,24 @@ describe("fixtures parse with the canonical contracts", () => {
     C.PlanOrClarification.parse(F.clarification);
   });
 
+  it("workspaces: valid, Task projection shares the ID, primaries are members of the right kind", () => {
+    for (const ws of [...Object.values(F.workspaces), F.duplicateNameWorkspace] as C.Workspace[]) {
+      C.Workspace.parse(ws);
+      const kindOf = (rid: string) => F.snapshot.resources.find((r) => r.id === rid)?.kind;
+      if (ws.primaryTabId) {
+        expect(ws.resourceIds).toContain(ws.primaryTabId);
+        expect(kindOf(ws.primaryTabId)).toBe("tab");
+      }
+      if (ws.primaryWindowId) {
+        expect(ws.resourceIds).toContain(ws.primaryWindowId);
+        expect(kindOf(ws.primaryWindowId)).toBe("window");
+      }
+    }
+    expect(F.task.id).toBe(F.workspaces.groupProject.id);
+    expect(F.checkpoint.taskId).toBe(F.workspaces.groupProject.id);
+    expect(F.snapshot.resources.map((r) => r.id)).not.toContain(F.closedWindow.id);
+  });
+
   it("only advertises enabled capabilities", () => {
     for (const kind of F.snapshot.capabilities) {
       expect(C.DEFERRED_ACTION_KINDS as readonly string[]).not.toContain(kind);

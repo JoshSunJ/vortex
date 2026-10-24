@@ -13,6 +13,7 @@ import type {
   Snapshot,
   Source,
   Task,
+  Workspace,
 } from "@vortex/contracts";
 import { ENABLED_ACTION_KINDS } from "@vortex/contracts";
 
@@ -77,7 +78,16 @@ export const resources = {
     protectedByUser: false,
     capabilities: ["focus_window"],
   },
+  budgetSheet: tab(5, "Apartment budget - Sheets", "https://sheets.example.net/d/apartment-budget"),
 } satisfies Record<string, Resource>;
+
+/** Fixture: a native window that was a workspace member but is now closed (not in the snapshot). */
+export const closedWindow: Resource = {
+  ...resources.notesWindow,
+  id: id(111),
+  title: "draft-v1.txt - Notepad",
+  active: false,
+};
 
 export const snapshot: Snapshot = {
   schemaVersion: "1.0",
@@ -89,11 +99,53 @@ export const snapshot: Snapshot = {
   capabilities: [...ENABLED_ACTION_KINDS],
 };
 
+/** The research tabs Sam selected for the Group Project workspace. */
+export const researchTabIds = [resources.heatArticle.id, resources.heatArticleOther.id, resources.projectDoc.id];
+
+// Workspace is the full entity; `task` below is its legacy projection with the same ID.
+// Membership is explicit user selection only (no automatic classification).
+export const workspaces = {
+  groupProject: {
+    id: id(201),
+    name: "Group Project",
+    goal: "Group project research on urban heat islands",
+    deviceId: devices.samDesktop.id,
+    resourceIds: [...researchTabIds, resources.notesWindow.id],
+    primaryTabId: resources.heatArticle.id,
+    primaryWindowId: resources.notesWindow.id,
+    latestCheckpointId: id(501),
+    revision: 1,
+    createdAt: T0,
+    updatedAt: T1,
+  },
+  /** Second workspace so the demo can switch away and come back. */
+  budget: {
+    id: id(202),
+    name: "Apartment Budget",
+    goal: "Finish the monthly apartment budget",
+    deviceId: devices.samDesktop.id,
+    resourceIds: [resources.budgetSheet.id],
+    primaryTabId: resources.budgetSheet.id,
+    revision: 1,
+    createdAt: T0,
+    updatedAt: T0,
+  },
+} satisfies Record<string, Workspace>;
+
+/** Fixture: duplicate workspace name -> resolving "Group Project" must ask, not guess. Not in the default store. */
+export const duplicateNameWorkspace: Workspace = {
+  ...workspaces.groupProject,
+  id: id(203),
+  resourceIds: [resources.projectDoc.id],
+  primaryTabId: resources.projectDoc.id,
+  primaryWindowId: undefined,
+};
+
 export const task: Task = {
-  id: id(201),
-  goal: "Group project research on urban heat islands",
-  resourceIds: [resources.heatArticle.id, resources.heatArticleOther.id, resources.projectDoc.id],
-  updatedAt: T1,
+  id: workspaces.groupProject.id,
+  goal: workspaces.groupProject.goal,
+  resourceIds: workspaces.groupProject.resourceIds,
+  updatedAt: workspaces.groupProject.updatedAt,
 };
 
 const sha = (c: string) => c.repeat(64);
@@ -136,7 +188,7 @@ export const plans = {
         action: {
           kind: "group_tabs",
           label: "Heat island project",
-          targets: task.resourceIds.map((resourceId) => ({ resourceId, expectedRevision: 1 })),
+          targets: researchTabIds.map((resourceId) => ({ resourceId, expectedRevision: 1 })),
         },
       },
       { actionId: id(404), action: { kind: "focus_window", target: { resourceId: resources.notesWindow.id, expectedRevision: 1 } } },
@@ -163,6 +215,7 @@ export const clarification: Clarification = {
 export const checkpoint: Checkpoint = {
   id: id(501),
   taskId: task.id,
+  userNote: "Next I need to compare costs.",
   createdAt: T2,
   version: 1,
   resourceSnapshots: [resources.heatArticle, resources.projectDoc],
