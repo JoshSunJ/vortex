@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vortex control bridge</title><link rel="stylesheet" href="options.css"></head>
+<body><main>
+  <p class="eyebrow">VORTEX · OWNER A DEVELOPMENT SLICE</p>
+  <h1>Connect your browser</h1>
+  <p>This development bridge shares ordinary web-tab titles and URLs with the Vortex service on this computer. It can activate, group or reopen approved web tabs. It cannot read page contents or control arbitrary applications.</p>
+  <aside>Development transport: authenticated loopback HTTP. Production native messaging and voice are not implemented in this extension.</aside>
+  <form id="configuration">
+    <label for="extension-id">Your extension ID</label><input id="extension-id" readonly>
+    <p class="hint">Use this ID in the desktop bridge's allowed-extension configuration.</p>
+    <label for="origin">Desktop address</label><input id="origin" value="http://127.0.0.1:8790" readonly>
+    <label for="token">Local bridge token</label><input id="token" type="password" autocomplete="off" spellcheck="false" required>
+    <p class="hint">Get the token from your local desktop setup. It stays in this extension's local storage; do not put it in URLs or send it to an AI model.</p>
+    <div class="actions"><button id="start" type="submit">Save and start</button><button id="stop" type="button">Stop sharing and control</button></div>
+  </form>
+  <p id="status" role="status">Loading configuration…</p>
+  <p class="hint">Incognito and browser/internal pages are excluded. Keep the desktop service running. Chrome may suspend its worker; reconnection is best effort during this development slice.</p>
+</main><script type="module" src="src/options.js"></script></body></html>

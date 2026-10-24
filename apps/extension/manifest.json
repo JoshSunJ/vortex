@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Vortex Control Bridge (Development)",
+  "version": "0.1.0",
+  "description": "Connect selected browser tab controls to the local Vortex development bridge.",
+  "permissions": ["tabs", "tabGroups", "storage", "alarms"],
+  "host_permissions": ["http://127.0.0.1:8790/*"],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "action": { "default_title": "Configure Vortex control bridge" },
+  "options_page": "options.html",
+  "incognito": "not_allowed"
+}
