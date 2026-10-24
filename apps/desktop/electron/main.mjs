@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { parseEnv } from "node:util";
 import { CartesiaVoice, VoiceError } from "./voice.mjs";
+import { CartesiaReplies } from "./replies.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
@@ -14,12 +15,14 @@ const configPath = resolve(desktop, ".vortex/control.json");
 const extensionPath = resolve(repo, "apps/extension");
 const uiPath = resolve(desktop, "ui/index.html");
 const uiUrl = pathToFileURL(uiPath).href;
-const voice = new CartesiaVoice(() => {
+const getCartesiaKey = () => {
   const fromEnvironment = process.env.CARTESIA_API_KEY?.trim();
   if (fromEnvironment) return fromEnvironment;
   try { return parseEnv(readFileSync(resolve(desktop, ".env.local"), "utf8")).CARTESIA_API_KEY?.trim() || undefined; }
   catch { return undefined; }
-});
+};
+const voice = new CartesiaVoice(getCartesiaKey);
+const replies = new CartesiaReplies(getCartesiaKey);
 let window;
 let backend;
 let startupError;
@@ -92,8 +95,14 @@ const methods = {
   voiceStatus: () => localResult(voice.status()),
   beginVoiceCapture: value => {
     if (value?.consent !== true) throw new VoiceError("FORBIDDEN", "Agree to send this recording to Cartesia first.");
+    replies.cancel();
     return localResult(voice.arm());
   },
+  speakStatus: async code => {
+    if (voice.canRecord() || voice.inflight) throw new VoiceError("PROTECTED", "Finish recording before starting a voice reply.");
+    return localResult(await replies.speak(code));
+  },
+  cancelSpeech: () => localResult(replies.cancel()),
   transcribeVoice: async value => localResult(await voice.transcribe(value)),
   cancelVoice: captureId => localResult(voice.cancel(captureId)),
   listOperations: () => request("/control/operations"),

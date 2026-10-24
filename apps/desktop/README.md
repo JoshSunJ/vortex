@@ -2,7 +2,7 @@
 
 Vortex now has a visible Windows Electron dashboard backed by the real local control engine. Select open windows or connected browser tabs, save them as a task workspace, leave a checkpoint note, and review a focus/resume preview before approving it. Workspace cards and notes persist locally in SQLite. This standalone local mode uses the existing `@vortex/contracts`; Andrew's cloud API and Nova's planning service are not required to try it.
 
-The command bar supports bounded typed commands, and the voice dialog records a short microphone command for Cartesia transcription. Review or edit the transcript before preparing a command; focus/resume still requires the existing exact-plan confirmation. AI summaries, phone handoff, spoken replies and reconstruction of closed native applications are not connected. Resume focuses saved primary resources that are still available; it does not restore a full desktop layout or reopen closed tabs.
+The command bar supports bounded typed commands, and the voice dialog records a short microphone command for Cartesia transcription. Speech now prepares the search result, clarification, form or action preview directly. Focus/resume still requires the existing exact-plan confirmation. Cartesia speaks short generic status responses. AI summaries, phone handoff and reconstruction of closed native applications are not connected. Resume focuses saved primary resources that are still available; it does not restore a full desktop layout or reopen closed tabs.
 
 Implemented:
 
@@ -51,11 +51,16 @@ For voice:
 2. Copy `apps/desktop/.env.example` to `apps/desktop/.env.local` and set `CARTESIA_API_KEY` there. The latter is ignored by Git and read only in the desktop main process. An existing `CARTESIA_API_KEY` environment variable takes priority. Do not enter the key into the app's command bar or commit it.
 3. Open **Voice command**. Choose **Check setup again** if needed; no restart is required for a changed local key.
 4. Agree to send this recording to Cartesia, choose **Record command**, then **Stop & transcribe**. The microphone stops after 15 seconds at most; switching away or closing the dialog discards capture. **Discard / cancel** aborts a pending request and suppresses late transcripts. Audio remains in memory and is not written to disk by Vortex; Cartesia receives the submitted recording under its own service policies.
-5. Review/edit the transcript, choose **Review this command**, then review the resulting form or exact action preview. Speech never silently approves a plan.
+5. By default, Vortex opens the resulting search, clarification, form or exact action preview directly after transcription. Review the proposed target and choose **Confirm & focus** to switch. Creating a workspace or checkpoint still requires saving its form. Speech never silently approves a plan.
+6. The recognized text also appears in the command bar for correction. For the earlier workflow, select **Let me review the transcript before preparing a result** in the voice dialog; then edit the transcript and choose **Review this command**.
+
+**Spoken replies:** the command panel has **Spoken replies**, **Test voice**, **Stop voice** and **Replay** controls. Turn replies off to keep text-only results; the preference stays on this computer. A confirmation dialog also displays the identical spoken text and a Stop voice button. Starting another recording stops playback and aborts pending synthesis so the assistant does not transcribe its own response. A failed voice reply never blocks or approves a desktop action.
+
+Only fixed status phrases are sent to Cartesia's `POST /tts/bytes`, using `sonic-3-2026-01-12` and the public example voice from Cartesia's official SDK. Titles, URLs, notes, resource metadata and recognized commands are not sent for speech synthesis. Audio is requested as 24 kHz PCM WAV with `save:false`, bounded to 1 MB, cached in memory by phrase, and cancelled after 15 seconds. No automatic provider retry occurs. Provider retention remains governed by Cartesia's service policies.
 
 The main process uses the fixed `https://api.cartesia.ai/stt` endpoint, `ink-whisper`, English, multipart audio, a 20-second timeout, 1 MB upload limit and no automatic retries. It keeps the key out of preload responses, renderer data and error messages. Camera/screen permissions are denied; microphone permission is restricted to this main frame during an explicit short recording lease. No background listening, native app content or browsing inventory is sent to Cartesia.
 
-Live verification on this Windows machine: a locally synthesized **Find Vortex** WAV was sent through the real Cartesia adapter and returned **Find vortex**. This used no microphone recording. The renderer's physical microphone capture still requires a human trial on the demo device. Adapter unit tests use a clearly labeled mock provider and do not count as live Cartesia evidence.
+Live verification on this Windows machine: a locally synthesized **Find Vortex** WAV was sent through the real Cartesia adapter and returned **Find vortex**. The real Cartesia TTS adapter also generated a valid 249,738-byte WAV for the generic voice-ready phrase. These provider checks used no microphone recording. The renderer's physical microphone capture still requires a human trial on the demo device. Adapter unit tests use a clearly labeled mock provider and do not count as live Cartesia evidence.
 
 In another terminal:
 
@@ -119,17 +124,17 @@ npm run typecheck -w @vortex/desktop
 ./node_modules/.bin/tsx.cmd apps/desktop/scripts/smoke.ts
 ```
 
-Unit tests cover changed/recycled targets, missing exact approval, duplicate concurrent execution, disabled actions, interrupted receipts, focus denial, unavailable workspace primaries, browser timeout and token/Origin checks. Workspace tests check canonical identity, selected primary membership, saved user notes and preview without side effects. Extension tests cover URL/target validation and exclude private page contents. Read-only smoke checks exercise the real Windows helper through the real local HTTP server without focusing a user's window.
+Unit tests cover changed/recycled targets, missing exact approval, duplicate concurrent execution, disabled actions, interrupted receipts, focus denial, unavailable workspace primaries, browser timeout and token/Origin checks. Workspace tests check canonical identity, selected primary membership, saved user notes and preview without side effects. Voice UI flow tests execute the real capture script with simulated microphone/IPC objects to verify direct preview preparation, optional transcript review and cancellation during transcription/planning; no execute call occurs in those tests. TTS tests cover the fixed phrase allowlist, caching, bounded audio and cancellation. Extension tests cover URL/target validation and exclude private page contents. Read-only smoke checks exercise the real Windows helper through the real local HTTP server without focusing a user's window.
 
 The Electron renderer is sandboxed with context isolation, no Node access and a restrictive content security policy. Its fixed preload methods validate the sending main frame; local tokens and direct network/file access remain in the main process. All external navigation is denied. Permission handlers allow only the app's explicitly armed audio recording; camera, display capture and unrelated permissions stay denied.
 
-Still requires real manual demo-device verification: extension activation/grouping, user-approved native focus and browser-worker suspension/reconnection. Unit adapter mocks are labeled test doubles and are not live evidence.
+Still requires real manual demo-device verification: physical microphone capture, extension activation/grouping, cross-application native focus and browser-worker suspension/reconnection. ChatGPT window switching has been reported unreliable and remains an open issue; this voice-flow update does not claim to fix it. Unit adapter mocks are labeled test doubles and are not live evidence.
 
 ## Next owner A milestones
 
 1. Manually pair/load the extension, then verify real activation/grouping and reconnect.
 2. Wire the engine into Andrew's authenticated live `Services` implementation and durable workspace/checkpoint store.
-3. Human-test microphone capture, recording cancellation and voice -> reviewed transcript -> preview -> approved focus. Add Cartesia spoken replies and Nova's real intent planner; typed command grammar is not an AI/sponsor substitute.
+3. Human-test microphone capture, recording cancellation and voice -> direct preview -> approved focus. Wire Nova's real intent planner; typed command grammar is not an AI/sponsor substitute.
 4. Implement reviewed checkpoint-driven reopening/rebinding for closed tabs, then repeat the full workspace pause/resume journey.
 
 Archive/closing, arbitrary click/type/scripts, native document contents and layout changes remain disabled. Nathan has no critical dependency. No shared wire schema or action kind changed for this command/voice slice.

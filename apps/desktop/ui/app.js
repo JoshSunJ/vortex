@@ -191,20 +191,27 @@ function checkpointDraft(workspaceId, name, note) {
   $("checkpoint-note").value = note || "";
   $("note-dialog").showModal();
 }
-async function reviewCommand(text) {
+let commandGeneration = 0;
+function requestReply(code) { document.dispatchEvent(new CustomEvent("vortex:reply", { detail: { code } })); }
+async function reviewCommand(text, options = {}) {
+  const generation = ++commandGeneration;
   const outcome = await call("previewCommand", text);
+  if (generation !== commandGeneration || (options.canApply && !options.canApply())) return;
+  options.beforeApply?.();
   const container = $("command-result"); container.replaceChildren(); container.hidden = false;
-  if (outcome.kind === "plan") { container.append(node("p", "field-note", "Target resolved. Review the exact focus actions.")); showPreview(outcome.plan); }
+  let replyCode = "help";
+  if (outcome.kind === "plan") { container.append(node("p", "field-note", "Target resolved. Review the exact focus actions.")); showPreview(outcome.plan); replyCode = "preview"; }
   else if (outcome.kind === "find") {
     setView("workspaces"); state.query = outcome.query; state.filter = "all"; $("search").value = outcome.query;
     for (const button of document.querySelectorAll("[data-filter]")) button.classList.toggle("active", button.dataset.filter === "all");
     await refresh(true); renderResources();
     container.append(node("p", "field-note", `${outcome.resources.length} matching open resources. Find does not change window focus.`));
+    replyCode = outcome.resources.length ? "found" : "empty";
   } else if (outcome.kind === "create_workspace") {
     setView("workspaces"); createDialog();
-    if ($("create-dialog").open) $("workspace-name").value = outcome.name;
-    else container.append(node("p", "field-note", `Select the windows or tabs for “${outcome.name}”, then review this command again.`));
-  } else if (outcome.kind === "checkpoint") checkpointDraft(outcome.workspaceId, outcome.workspaceName, outcome.userNote);
+    if ($("create-dialog").open) { $("workspace-name").value = outcome.name; replyCode = "create"; }
+    else { container.append(node("p", "field-note", `Select the windows or tabs for “${outcome.name}”, then review this command again.`)); replyCode = "select"; }
+  } else if (outcome.kind === "checkpoint") { checkpointDraft(outcome.workspaceId, outcome.workspaceName, outcome.userNote); replyCode = "checkpoint"; }
   else {
     container.append(node("p", "field-note", outcome.message));
     const choices = node("div", "command-choices");
@@ -217,7 +224,9 @@ async function reviewCommand(text) {
       choices.append(button);
     }
     container.append(choices);
+    replyCode = outcome.choices?.length ? "choose" : "help";
   }
+  if (generation === commandGeneration) requestReply(replyCode);
 }
 async function refresh(quiet = false) {
   if (state.refreshing || document.querySelector("dialog[open]")) return;
@@ -240,7 +249,7 @@ async function refresh(quiet = false) {
 }
 
 for (const button of document.querySelectorAll("[data-view]")) button.addEventListener("click", () => setView(button.dataset.view));
-for (const button of document.querySelectorAll("[data-close]")) button.addEventListener("click", () => $(button.dataset.close).close());
+for (const button of document.querySelectorAll("[data-close]")) button.addEventListener("click", () => { stopSpokenReply(); $(button.dataset.close).close(); });
 for (const dialog of document.querySelectorAll("dialog")) dialog.addEventListener("close", () => { dialog.querySelector(".dialog-notice")?.remove(); if (dialog.id === "preview-dialog") state.pendingPlan = null; });
 for (const button of document.querySelectorAll("[data-filter]")) button.addEventListener("click", () => { state.filter = button.dataset.filter; for (const item of document.querySelectorAll("[data-filter]")) item.classList.toggle("active", item === button); renderResources(); });
 $("search").addEventListener("input", () => { state.query = $("search").value; renderResources(); });
@@ -262,10 +271,11 @@ $("confirm-action").addEventListener("click", () => action($("confirm-action"), 
   const plan = state.pendingPlan; if (!plan) return;
   const operation = await call("executeApproved", plan.id, plan.planHash, plan.snapshotRevision);
   $("preview-dialog").close();
-  if (operation.status === "succeeded") notice("The approved focus actions completed.");
+  if (operation.status === "succeeded") { notice("The approved focus actions completed."); requestReply("succeeded"); }
   else {
     const failed = (operation.results || []).find((r) => r.code);
     notice(failed ? (friendly[failed.code] || "The action was not fully confirmed. Check Activity for its outcome.") : "The action did not fully complete. Check Activity before retrying.", true);
+    requestReply("failed");
   }
   await refresh(true);
 }));
