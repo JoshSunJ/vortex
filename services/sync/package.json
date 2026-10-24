@@ -1,0 +1,15 @@
+{
+  "name": "@vortex/sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:publish": "spacetime publish vortex-sync --server http://127.0.0.1:3100 --module-path spacetimedb --yes",
+    "db:reset": "spacetime publish vortex-sync --server http://127.0.0.1:3100 --module-path spacetimedb --delete-data=always --yes",
+    "db:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb --yes",
+    "check:privacy": "tsx scripts/privacy-check.ts"
+  },
+  "dependencies": {
+    "spacetimedb": "2.13.0"
+  }
+}

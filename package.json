@@ -5,6 +5,7 @@
   "workspaces": [
     "packages/*",
     "services/*",
+    "services/sync/spacetimedb",
     "apps/*"
   ],
   "engines": {
