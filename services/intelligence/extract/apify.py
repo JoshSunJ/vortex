@@ -128,9 +128,8 @@ class ApifyExtractor:
         item = items[0]
 
         loaded = (item.get("crawl") or {}).get("loadedUrl") or item.get("url") or safe_url
-        trace["loadedUrl"] = loaded
         try:
-            validate_public_url(loaded, **self._guard_kwargs)
+            trace["loadedUrl"] = validate_public_url(loaded, **self._guard_kwargs)
         except ProviderError:
             return unavailable("VALIDATION_ERROR",
                                "the page redirected to a private or invalid destination")

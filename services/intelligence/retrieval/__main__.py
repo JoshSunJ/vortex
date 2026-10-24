@@ -4,7 +4,8 @@
   python -m services.intelligence.retrieval seed            # indexes labeled DEMO FIXTURES for user demo-user
   python -m services.intelligence.retrieval search "battery recycling costs" [--agent] [--workspace ID]
 
-Seeded rows are fixtures, not evidence of real sources. The --agent trace is the sponsor evidence.
+Seeded rows are fixtures, not evidence of real sources. --agent is blocked until server-side
+authorization is implemented; direct tool execution is not complete agent-track evidence.
 """
 import json
 import sys

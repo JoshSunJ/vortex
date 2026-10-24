@@ -11,8 +11,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/desktop/tsconfig.json",
+    "test": "node scripts/test.mjs",
+    "test:providers": "python -m unittest discover -s services/intelligence/extract/tests -t . && python -m unittest discover -s services/intelligence/retrieval/tests -t .",
     "check": "npm run typecheck && npm test",
     "dev:api": "npm run dev -w @vortex/api",
     "dev:token": "npm run token -w @vortex/api --"

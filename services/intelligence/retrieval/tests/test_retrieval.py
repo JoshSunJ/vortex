@@ -1,6 +1,6 @@
 """Unit tests with a FAKE Elastic transport (development fixtures only). They prove the adapter's
 logic and authorization checks; they do NOT prove the real Elastic Agent Builder path works.
-Real evidence: `python -m services.intelligence.retrieval setup|seed|search --agent`."""
+Agent conversation search remains disabled until server-enforced scope is implemented."""
 import json
 import unittest
 
@@ -72,17 +72,16 @@ class SearchTests(unittest.TestCase):
         self.assertEqual([h["sourceId"] for h in res.hits], ["s1"])
         self.assertEqual(res.trace["droppedForAuthorization"], 2)
 
-    def test_agent_path_records_trace_and_still_filters(self):
+    def test_agent_path_is_blocked_before_any_unscoped_model_or_tool_call(self):
         converse = {"conversation_id": "c1", "steps": [
             {"type": "tool_call", "tool_id": TOOL_USER, "params": {"user_id": "intruder", "query": "x"},
              "results": esql(row(user="intruder", sid="leak"), row(user="u1", sid="mine"))}],
             "response": {"message": "done"}}
         fake = FakeElastic(converse=converse)
-        res = svc(fake).search_sources("x", SearchScope("u1"), via_agent=True)
-        self.assertEqual([h["sourceId"] for h in res.hits], ["mine"])
-        self.assertTrue(res.trace["toolCallObserved"])
-        self.assertEqual(res.trace["conversationId"], "c1")
-        self.assertEqual(res.trace["droppedForAuthorization"], 1)
+        with self.assertRaises(ProviderError) as cm:
+            svc(fake).search_sources("x", SearchScope("u1"), via_agent=True)
+        self.assertEqual(cm.exception.code, "FORBIDDEN")
+        self.assertEqual(fake.calls, [])
 
     def test_hits_capped_at_five_and_excerpt_at_500(self):
         long = ("filler " * 300) + "lithium cobalt recovery " + ("filler " * 300)
@@ -100,11 +99,12 @@ class SearchTests(unittest.TestCase):
             self.assertEqual(cm.exception.code, "VALIDATION_ERROR")
 
     def test_http_error_is_typed_and_hides_key(self):
-        s = svc(lambda *a: (401, {"error": "bad key"}))
+        s = svc(lambda *a: (401, {"error": {"reason": "secret-key PRIVATE_ARTICLE"}}))
         with self.assertRaises(ProviderError) as cm:
             s.search_sources("x", SearchScope("u1"))
         self.assertEqual(cm.exception.code, "UNAUTHORIZED")
         self.assertNotIn("secret-key", str(cm.exception))
+        self.assertNotIn("PRIVATE_ARTICLE", str(cm.exception))
 
 
 class IndexTests(unittest.TestCase):

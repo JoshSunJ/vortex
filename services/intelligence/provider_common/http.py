@@ -14,6 +14,14 @@ from .errors import ProviderError
 
 # (method, url, headers, body, timeout_seconds) -> (status, parsed JSON or text or None)
 Transport = Callable[[str, str, dict, Optional[bytes], float], Tuple[int, Any]]
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+
+
+def _read_bounded(response):
+    raw = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise ProviderError("CONTENT_UNAVAILABLE", "provider response exceeded the size limit")
+    return raw
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -28,9 +36,12 @@ def urllib_transport(method: str, url: str, headers: dict, body: Optional[bytes]
     req = urllib.request.Request(url, data=body, method=method, headers=headers)
     try:
         with _opener.open(req, timeout=timeout) as resp:
-            status, raw = resp.status, resp.read()
+            status, raw = resp.status, _read_bounded(resp)
     except urllib.error.HTTPError as e:
-        status, raw = e.code, e.read()
+        try:
+            status, raw = e.code, _read_bounded(e)
+        finally:
+            e.close()
     except (socket.timeout, TimeoutError):
         raise ProviderError("PROVIDER_TIMEOUT", "provider request timed out")
     except urllib.error.URLError as e:

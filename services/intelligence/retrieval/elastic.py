@@ -4,9 +4,8 @@ Authorization model (contracts/ANDREW.md, security): user/workspace/consent filt
 trusted code, never delegated to a prompt.
   * Direct path (default): the service executes the scoped ES|QL tool through
     POST /api/agent_builder/tools/_execute with the caller's user_id passed as a tool parameter.
-  * Agent path (via_agent=True): the Agent Builder agent chooses and runs the same tools, which gives
-    the agent trace the Elastic track asks for. The agent cannot be forced to pass our user_id, so
-    every returned row is re-checked here and rows for another user/workspace are dropped.
+  * Agent path (via_agent=True): disabled until the deployment enforces caller scope outside model
+    parameters. Post-filtering cannot undo another user's content reaching the model first.
 
 NOTE: response shapes of `converse` and `tools/_execute` are not documented on the pages this was
 built from, so parsing is defensive (`_rows`). Verify against a real run before relying on it.
@@ -79,11 +78,8 @@ def _now() -> str:
 def _fail_from(status: int, body: Any, what: str) -> ProviderError:
     code = {401: "UNAUTHORIZED", 403: "UNAUTHORIZED", 404: "NOT_FOUND", 408: "PROVIDER_TIMEOUT",
             504: "PROVIDER_TIMEOUT"}.get(status, "INTERNAL_ERROR")
-    reason = ""
-    if isinstance(body, dict):
-        err = body.get("error")
-        reason = str(err.get("reason") if isinstance(err, dict) and err.get("reason") else (err or body.get("message") or ""))
-    return ProviderError(code, f"{what} failed (HTTP {status}){': ' + reason[:200] if reason else ''}")
+    # Provider bodies may echo keys, queries or private source contents.
+    return ProviderError(code, f"{what} failed (HTTP {status})")
 
 
 def _rows(obj: Any) -> List[dict]:
@@ -270,6 +266,8 @@ class ElasticRetrieval:
 
     # -- search -----------------------------------------------------------------------------
     def search_sources(self, query: str, scope: SearchScope, *, via_agent: bool = False) -> SearchResult:
+        if via_agent:
+            raise ProviderError("FORBIDDEN", "agent search requires server-enforced user and workspace scope")
         query = (query or "").strip()
         if not query or len(query) > MAX_QUERY_CHARS:
             raise ProviderError("VALIDATION_ERROR", "query must be 1-2000 characters")
@@ -280,16 +278,13 @@ class ElasticRetrieval:
         if scope.workspace_id:
             params["workspace_id"] = scope.workspace_id
 
-        trace = {"mode": "agent" if via_agent else "tool_execute", "toolId": tool,
+        trace = {"mode": "tool_execute", "toolId": tool,
                  "index": self.cfg.index, "queriedAt": _now()}
-        if via_agent:
-            rows = self._run_agent(query, scope, tool, params, trace)
-        else:
-            status, body = self._kibana("POST", "/api/agent_builder/tools/_execute",
-                                        {"tool_id": tool, "tool_params": params}, retry=True)
-            if status != 200:
-                raise _fail_from(status, body, "search")
-            rows = _rows(body)
+        status, body = self._kibana("POST", "/api/agent_builder/tools/_execute",
+                                    {"tool_id": tool, "tool_params": params}, retry=True)
+        if status != 200:
+            raise _fail_from(status, body, "search")
+        rows = _rows(body)
         trace["rowsReturned"] = len(rows)
 
         hits, dropped = [], 0
@@ -311,25 +306,6 @@ class ElasticRetrieval:
             hits.append(hit)
         trace["droppedForAuthorization"] = dropped
         return SearchResult(hits[:MAX_HITS], trace)
-
-    def _run_agent(self, query, scope, tool, params, trace) -> List[dict]:
-        prompt = (f"Find the user's saved sources matching: {query}\n"
-                  f"Call {tool} with user_id={scope.user_id}"
-                  + (f" and workspace_id={scope.workspace_id}" if scope.workspace_id else "")
-                  + " and query set to the search text above.")
-        status, body = self._kibana("POST", "/api/agent_builder/converse",
-                                    {"input": prompt, "agent_id": self.cfg.agent_id})
-        if status != 200:
-            raise _fail_from(status, body, "agent search")
-        steps = body.get("steps") if isinstance(body, dict) else None
-        trace["agentId"] = self.cfg.agent_id
-        trace["conversationId"] = body.get("conversation_id") if isinstance(body, dict) else None
-        trace["steps"] = [
-            {"type": s.get("type"), "toolId": s.get("tool_id"), "params": s.get("params")}
-            for s in (steps or []) if isinstance(s, dict)]
-        trace["toolCallObserved"] = any(s.get("type") == "tool_call" for s in trace["steps"])
-        return _rows(steps if steps is not None else body)
-
 
 def search_sources(query: str, scope: SearchScope, **kwargs) -> SearchResult:
     """Module-level convenience using ELASTIC_* environment variables."""
