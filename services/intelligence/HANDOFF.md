@@ -15,7 +15,8 @@
 - Bounded model JSON validation with one shared repair/timeout retry, per-call
   deadlines, cancellation, and sanitized errors.
 - SDK-free Gemini transport, local credential template/ignore rules, and an
-  opt-in synthetic live check. Live access is not yet verified.
+  opt-in synthetic live check. Synthetic live access passed on October 24, 2026.
+- Optional one-time loopback setup helper for storing the key without an editor.
 
 ## Contract baseline
 
@@ -32,6 +33,8 @@ Existing `taskId` fields reference the same entity as `Workspace.id`. Wire names
 and version were not independently changed. No new HTTP API, database, or OS
 executor was created. Root/shared contracts were not edited. The current feature
 branch is `codex/owner-b-gemini`, created from the latest `origin/main` for this sync.
+The subsequent local-key setup feature is stacked on that baseline as
+`codex/owner-b-local-key-setup`, preserving its unmerged dependency.
 
 ## Ownership after the main update
 
@@ -95,15 +98,20 @@ for the actual brief ID, and never guess a future ID.
 ## Verification and remaining work
 
 - Tested runtime: Node.js 22.17.0.
-- Run all tests with `node --test` from the repository root: 75 tests passed.
+- Run all tests with `node --test` from the repository root: 85 passed, one skipped
+  because Windows symlink creation privilege was unavailable. The environment
+  requires loopback permission for the local setup tests.
 - Verified tab, six-command workspace, and content-draft demos, including workspace
   interactive input. All model/consent/schema dependencies in the demos are mocks.
 - Integration test validators/services are test doubles, not production schemas
   or proof of authentication enforcement.
 - Missing: canonical runtime validators and real persistence/execution/phone integration.
-- Missing: live Gemini, Elastic, Apify, and Fetch calls and evidence traces.
-- Blocker: GEMINI_API_KEY is not configured. Use a verified Free-tier AI Studio
-  project; never put keys in chat, source, logs, or Git. No paid model fallback exists.
+- Verified: real Gemini returned one validated synthetic quote through the selected
+  transport. The key was stored only in the Git-ignored local environment file.
+  The project displayed Free tier; no billing setting changed or paid fallback ran.
+- Missing: live Elastic/Apify/Fetch integration and real source-to-phone evidence.
+- Each developer needs an approved local Free-tier Gemini key; do not share keys
+  in chat, source, logs, or Git. The live check sent synthetic data only.
 - Unchanged: root configuration, dependency/lockfile, shared contracts, and A/C apps.
 
 Validate actual service input/output fixtures against the canonical schemas before

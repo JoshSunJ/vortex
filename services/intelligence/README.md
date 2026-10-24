@@ -2,7 +2,8 @@
 
 A dependency-free Node.js starting point for Owner B. Gemini is the selected model
 provider. Real browser inventory, Elastic, Apify, and Fetch are not connected.
-All demos still use MOCK records/responses; live Gemini access awaits a local key.
+All demos still use MOCK records/responses. A synthetic live Gemini check passed
+on October 24, 2026; developers must configure their own approved local key.
 Project files, messages, examples, and supported command patterns use English.
 
 ## Run
@@ -16,6 +17,7 @@ node services/intelligence/workspace-demo.mjs
 node services/intelligence/workspace-demo.mjs --interactive
 node services/intelligence/content-demo.mjs
 node services/intelligence/gemini-check.mjs
+node services/intelligence/local-key-setup.mjs
 node --test
 ```
 
@@ -86,10 +88,13 @@ Tab closing, shell commands, and native application content access are unsupport
   an injected transport. At most two calls share the repair/timeout retry budget.
 - `src/gemini.mjs`: SDK-free Google Gemini transport with a fixed official endpoint,
   structured JSON output, bounded responses, and one allowlisted model.
+- `src/local-key-setup.mjs`: optional one-time, loopback-only credential setup for
+  development. It writes only the ignored local key file and closes after saving.
 - `demo.mjs` and `workspace-demo.mjs`: explicitly labeled mock examples.
 - `test/`: routing, malformed input, ambiguity, device boundaries, stale state,
   content provenance, consent, cancellation, model output, and safe integration
-  failure checks. All 75 tests passed on the tested runtime. Integration
+  failure checks. Latest run: 85 passed and one Windows symlink test skipped
+  because its required privilege was unavailable. Integration
   dependencies are test doubles.
 
 Connect Josh's real schemas through `contracts.snapshot`, `contracts.plan`, and
@@ -108,7 +113,8 @@ must never execute desktop effects.
 validation. Read-only tab search uses `resolveTabRequest` without a mutation plan.
 
 Root configuration, shared contracts, API/auth code, and lockfiles were not edited.
-This feature is on `codex/owner-b-gemini`, based on the latest main at sync time.
+The Gemini baseline is on `codex/owner-b-gemini`, based on the latest main at sync time.
+The local setup helper is a dependent feature on `codex/owner-b-local-key-setup`.
 Future features follow [the branch and sync workflow](AGENTS.md).
 
 ## Grounded content drafts
@@ -141,8 +147,9 @@ operation worker to handle; ABORTED is not a new wire ErrorCode.
 
 ## Next steps and limitations
 
-Connect canonical validators and shared persistence services, configure a local
-Gemini key from a verified Free-tier project, and run the opt-in live check below.
+Connect canonical validators and shared persistence services. The synthetic Gemini
+live check has passed; each developer should configure an approved local Free-tier
+key and run the opt-in live check below.
 Then connect one public article through Apify. Elastic and Fetch remain unconnected.
 Mock demos and unit tests are not live sponsor evidence or real delivery proof.
 
@@ -159,7 +166,9 @@ same model. No billing changes, paid fallback, or automatic model switch exists.
 2. Copy the empty service template locally:
 
    ```powershell
-   Copy-Item services/intelligence/.env.example services/intelligence/.env.local
+   if (-not (Test-Path services/intelligence/.env.local)) {
+     Copy-Item services/intelligence/.env.example services/intelligence/.env.local
+   }
    ```
 
 3. Enter the key in `.env.local` using a local editor. The service-local .gitignore
@@ -179,6 +188,26 @@ same model. No billing changes, paid fallback, or automatic model switch exists.
 The check prints only model/provider and safe status messages. It sends synthetic
 demo text, not browsing data. A quota error stops the request without upgrading or
 falling back. All other demos remain offline mocks even after configuring a key.
+
+### Optional setup without a text editor
+
+Run `node services/intelligence/local-key-setup.mjs` and open the loopback URL printed
+in the terminal. Paste the key into the masked field, confirm the project Free tier,
+and save. The token-protected form accepts only same-origin requests, rejects
+oversized/invalid keys, and refuses to overwrite a configured key or symlink. It
+allows an empty `.env.local` template. No key is echoed in responses or logs.
+
+The helper closes after one successful save and expires after ten minutes. It is
+a development-only credential utility, not a Vortex API or an executor bridge.
+Never expose, proxy, or deploy it. Local files inherit the user's OS permissions;
+this does not claim encrypted credential storage or isolation from other local
+processes. The form cannot verify Google billing; check Free tier in AI Studio first.
+
+Verified setup: the project displayed Free tier in AI Studio, the one-time local
+form saved the key without exposing it, Git ignored the local environment file,
+and `gemini-check.mjs --live --confirm-free-tier` validated one synthetic quote.
+No billing settings changed, no paid fallback ran, and no real browsing text was
+sent. This is a narrow connectivity check, not end-to-end product verification.
 
 To use the transport behind the shared content services:
 
