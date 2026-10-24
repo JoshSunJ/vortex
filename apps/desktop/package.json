@@ -1,0 +1,16 @@
+{
+  "name": "@vortex/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "dev": "tsx src/cli.ts start",
+    "snapshot": "tsx src/cli.ts snapshot",
+    "pair": "tsx src/cli.ts pair",
+    "focus": "tsx src/cli.ts focus",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run test"
+  },
+  "dependencies": { "@vortex/contracts": "1.0.0" }
+}
