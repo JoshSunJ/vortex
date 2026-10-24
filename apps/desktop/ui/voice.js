@@ -1,7 +1,7 @@
 "use strict";
 
 // This file only captures an explicit short microphone recording. Upload/key handling stays in main.
-const voiceUi = { configured: false, phase: "idle", captureId: null, recorder: null, stream: null, timer: null, generation: 0, chunks: [], bytes: 0 };
+const voiceUi = { configured: false, phase: "idle", captureId: null, recorder: null, stream: null, timer: null, generation: 0, chunks: [], bytes: 0, handingOff: false };
 function voiceFeedback(message) { $("voice-feedback").textContent = message; }
 function voiceButtons() {
   const busy = voiceUi.phase !== "idle";
@@ -35,6 +35,7 @@ async function checkVoice() {
 }
 async function startRecording() {
   if (voiceUi.phase !== "idle" || !$("voice-consent").checked) return;
+  stopSpokenReply();
   voiceUi.phase = "starting"; const generation = ++voiceUi.generation;
   $("voice-transcript").value = ""; voiceButtons();
   try {
@@ -64,9 +65,23 @@ async function startRecording() {
         const audio = await new Blob(voiceUi.chunks, { type: mimeType }).arrayBuffer(); voiceUi.chunks = [];
         const result = await call("transcribeVoice", { captureId: lease.captureId, audio, mimeType });
         if (generation !== voiceUi.generation) return;
+        voiceUi.captureId = null;
         $("voice-transcript").value = result.text;
-        voiceFeedback("Transcribed by Cartesia. Review or edit your words, then prepare the command.");
-      } catch (error) { if (generation === voiceUi.generation) voiceFeedback(error?.message || "Transcription failed. You can type the command instead."); }
+        $("command-text").value = result.text;
+        if ($("voice-review-first").checked) voiceFeedback("Transcribed by Cartesia. Review or edit your words, then prepare the command.");
+        else {
+          voiceUi.phase = "preparing"; voiceButtons(); voiceFeedback("Preparing the result. Switching or saving still requires your confirmation.");
+          await reviewCommand(result.text, {
+            canApply: () => generation === voiceUi.generation && $("voice-dialog").open,
+            beforeApply: () => { voiceUi.phase = "idle"; voiceUi.handingOff = true; $("voice-dialog").close(); },
+          });
+        }
+      } catch (error) {
+        if (generation === voiceUi.generation) {
+          const message = error?.message || "Transcription or command preview failed. Edit your transcript or type the command instead.";
+          voiceFeedback(message); if (!$("voice-dialog").open) notice(message, true);
+        }
+      }
       finally { if (generation === voiceUi.generation) { voiceUi.captureId = null; voiceUi.phase = "idle"; voiceButtons(); } }
     };
     recorder.start(250); voiceUi.phase = "recording"; voiceButtons();
@@ -91,10 +106,14 @@ $("voice-cancel").addEventListener("click", cancelRecording);
 $("voice-consent").addEventListener("change", voiceButtons);
 $("voice-transcript").addEventListener("input", voiceButtons);
 $("voice-close").addEventListener("click", () => $("voice-dialog").close());
-$("voice-dialog").addEventListener("close", () => { void cancelRecording(); $("voice-consent").checked = false; });
+$("voice-dialog").addEventListener("close", () => {
+  if (voiceUi.handingOff) voiceUi.handingOff = false;
+  else void cancelRecording();
+  $("voice-consent").checked = false;
+});
 $("voice-use").addEventListener("click", () => {
   const text = $("voice-transcript").value.trim(); if (!text || voiceUi.phase !== "idle") return;
-  $("command-text").value = text; $("voice-dialog").close();
+  $("command-text").value = text; voiceUi.handingOff = true; $("voice-dialog").close();
   void action($("command-submit"), () => reviewCommand(text));
 });
 window.addEventListener("blur", () => { if (["starting", "recording"].includes(voiceUi.phase)) void cancelRecording(); });
