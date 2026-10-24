@@ -1,7 +1,7 @@
 // FIXTURE SERVICES: in-memory stand-ins so dashboard, desktop and phone can integrate before
 // Nova's intelligence, Josh's executor and the Spacetime module exist. Ownership and expiry rules
 // are real here (they are what the API promises); content and plans are canned fixture data.
-import type { Delivery, Operation, Plan, ReadProgress, Source } from "@vortex/contracts";
+import type { Action, Checkpoint, Clarification, Delivery, Operation, Plan, ReadProgress, Resource, Snapshot, Source, Workspace } from "@vortex/contracts";
 import * as F from "@vortex/fixtures";
 import { DEFAULT_SCOPES, type AuthContext } from "./auth";
 import { ApiError } from "./envelope";
@@ -14,9 +14,15 @@ const DELIVERY_TTL_MS = 24 * 3600_000;
 
 type Owned<T> = T & { ownerUserId: string };
 
-export function createFixtureServices(now: () => number = Date.now): Services {
+export type FixtureOptions = {
+  /** Override the desktop snapshot, e.g. to simulate a closed native window. */
+  snapshot?: Snapshot;
+};
+
+export function createFixtureServices(now: () => number = Date.now, options: FixtureOptions = {}): Services {
   const iso = (ms = now()) => new Date(ms).toISOString();
   const clone = <T>(v: T): T => structuredClone(v);
+  const snapshot = clone(options.snapshot ?? F.snapshot);
 
   const devices = new Map<string, Device & { revoked: boolean }>(
     Object.values(F.devices).map((d) => [
@@ -36,7 +42,120 @@ export function createFixtureServices(now: () => number = Date.now): Services {
   const progress = new Map<string, ReadProgress>([[`${F.readProgress.briefId}:${F.readProgress.deviceId}`, clone(F.readProgress)]]);
   const pairings = new Map<string, { pairing: Pairing; userId: string; desktopDeviceId: string; claimed?: { name: string; userId: string } ; used: boolean }>();
 
+  const workspaces = new Map<string, Owned<Workspace>>(
+    (Object.values(F.workspaces) as Workspace[]).map((w) => [w.id, { ...clone(w), ownerUserId: F.users.sam.id }]),
+  );
+  const checkpoints = new Map<string, Owned<Checkpoint>>([[F.checkpoint.id, { ...clone(F.checkpoint), ownerUserId: F.users.sam.id }]]);
+  const knownSources = Object.values(F.sources) as Source[];
+
   const strip = <T extends { ownerUserId: string }>({ ownerUserId: _, ...rest }: T) => rest;
+  const liveResource = (resourceId: string): Resource | undefined => snapshot.resources.find((r) => r.id === resourceId);
+
+  function ownedWorkspace(auth: AuthContext, workspaceId: string) {
+    const ws = workspaces.get(workspaceId);
+    if (!ws) throw new ApiError("NOT_FOUND", "Workspace not found");
+    if (ws.ownerUserId !== auth.userId) throw new ApiError("FORBIDDEN", "Workspace belongs to another user");
+    return ws;
+  }
+
+  function ownedCheckpoint(auth: AuthContext, checkpointId: string) {
+    const cp = checkpoints.get(checkpointId);
+    if (!cp || cp.ownerUserId !== auth.userId) throw new ApiError("NOT_FOUND", "Checkpoint not found");
+    return cp;
+  }
+
+  /** New members must be live resources on the workspace's device; no automatic additions. */
+  function validateNewMembers(deviceId: string, resourceIds: string[], existing: string[] = []) {
+    if (new Set(resourceIds).size !== resourceIds.length) throw new ApiError("VALIDATION_ERROR", "Duplicate workspace members");
+    for (const rid of resourceIds) {
+      if (existing.includes(rid)) continue;
+      const r = liveResource(rid);
+      if (!r) throw new ApiError("VALIDATION_ERROR", `Resource ${rid} is not in the current snapshot`);
+      if (r.deviceId !== deviceId) throw new ApiError("VALIDATION_ERROR", `Resource ${rid} belongs to another device`);
+    }
+  }
+
+  /** Primary targets must be selected members of the matching kind. */
+  function validatePrimary(resourceIds: string[], primaryId: string | undefined, kind: Resource["kind"], unchanged: boolean) {
+    if (primaryId === undefined) return;
+    if (!resourceIds.includes(primaryId)) throw new ApiError("VALIDATION_ERROR", `Primary ${kind} must be a selected member`);
+    const r = liveResource(primaryId);
+    if (r ? r.kind !== kind : !unchanged) throw new ApiError("VALIDATION_ERROR", `Primary ${kind} must be a live resource of kind ${kind}`);
+  }
+
+  function storePlan(auth: AuthContext, plan: Plan) {
+    plan.planHash = `fixture-${plan.id}`;
+    plans.set(plan.id, { ...plan, ownerUserId: auth.userId });
+    return plan;
+  }
+
+  // Stand-in for Josh's planWorkspaceFocus/planWorkspaceResume: only the saved primary tab is
+  // activated and only the saved primary window is focused. Missing members are reported as
+  // unavailable, never replaced by a title match. No primary targets -> ask the user.
+  function workspacePlan(auth: AuthContext, ws: Owned<Workspace>, req: { deviceId: string; snapshotRevision: number }, mode: "focus" | "resume"): Plan | Clarification {
+    if (req.deviceId !== ws.deviceId) throw new ApiError("VALIDATION_ERROR", "Workspace belongs to another device");
+    if (req.snapshotRevision !== snapshot.revision) throw new ApiError("STALE_STATE", "Workspace changed; refresh the snapshot");
+
+    const cp = mode === "resume" && ws.latestCheckpointId ? checkpoints.get(ws.latestCheckpointId) : undefined;
+    const savedTitle = (rid: string) => cp?.resourceSnapshots.find((r) => r.id === rid)?.title;
+    const tab = ws.primaryTabId ? liveResource(ws.primaryTabId) : undefined;
+    const win = ws.primaryWindowId ? liveResource(ws.primaryWindowId) : undefined;
+    const unavailable: string[] = [];
+    if (ws.primaryTabId && !tab) unavailable.push(savedTitle(ws.primaryTabId) ?? "the saved primary tab");
+    if (ws.primaryWindowId && !win) unavailable.push(savedTitle(ws.primaryWindowId) ?? "the saved primary window");
+
+    const actions: { actionId: string; action: Action }[] = [];
+    if (cp) {
+      for (const sourceId of cp.sourceIds) {
+        const src = knownSources.find((s) => s.id === sourceId);
+        if (!src || (src.resourceId && liveResource(src.resourceId))) continue;
+        actions.push({
+          actionId: crypto.randomUUID(),
+          action: { kind: "open_saved_url", checkpointId: cp.id, sourceId, url: src.url, expectedSourceHash: src.contentHash },
+        });
+      }
+    }
+    if (tab) actions.push({ actionId: crypto.randomUUID(), action: { kind: "activate_tab", target: { resourceId: tab.id, expectedRevision: tab.revision } } });
+    if (win) actions.push({ actionId: crypto.randomUUID(), action: { kind: "focus_window", target: { resourceId: win.id, expectedRevision: win.revision } } });
+
+    const final = win ?? tab;
+    if (!final) {
+      const live = ws.resourceIds.map(liveResource).filter((r): r is Resource => r !== undefined);
+      return {
+        kind: "clarification",
+        commandId: crypto.randomUUID(),
+        question:
+          unavailable.length > 0
+            ? `${unavailable.join(" and ")} ${unavailable.length > 1 ? "are" : "is"} no longer open. Which member should ${ws.name} open to?`
+            : `${ws.name} has no saved primary tab or window. Which one should it open to?`,
+        options: live.map((r) => ({ id: crypto.randomUUID(), label: r.title, resourceIds: [r.id] })),
+      };
+    }
+
+    const reopened = actions.filter((a) => a.action.kind === "open_saved_url").length;
+    const parts = [
+      tab && `Activate "${tab.title}".`,
+      win && `Focus "${win.title}". Vortex doesn't read or restore what's inside it.`,
+      reopened > 0 && `Reopen ${reopened} saved source${reopened > 1 ? "s" : ""} from the checkpoint.`,
+      unavailable.length > 0 && `Unavailable: ${unavailable.join(", ")}.`,
+      `Keyboard focus ends on "${final.title}".`,
+    ];
+    return storePlan(auth, {
+      kind: "plan",
+      id: crypto.randomUUID(),
+      commandId: crypto.randomUUID(),
+      workspaceId: ws.id,
+      deviceId: req.deviceId,
+      snapshotRevision: snapshot.revision,
+      finalFocusResourceId: final.id,
+      actions,
+      explanation: `FIXTURE PLAN. ${parts.filter(Boolean).join(" ")}`,
+      approvalRequired: reopened > 0,
+      planHash: "",
+      createdAt: iso(),
+      expiresAt: iso(now() + APPROVAL_TTL_MS),
+    });
+  }
 
   function ownDevice(auth: AuthContext, deviceId: string) {
     const device = devices.get(deviceId);
@@ -82,8 +201,83 @@ export function createFixtureServices(now: () => number = Date.now): Services {
     async getSnapshot(auth, deviceId) {
       requireActiveCaller(auth);
       ownDevice(auth, deviceId);
-      if (deviceId !== F.snapshot.deviceId) throw new ApiError("NOT_FOUND", "No snapshot for this device");
-      return clone(F.snapshot);
+      if (deviceId !== snapshot.deviceId) throw new ApiError("NOT_FOUND", "No snapshot for this device");
+      return clone(snapshot);
+    },
+
+    async listWorkspaces(auth, deviceId) {
+      requireActiveCaller(auth);
+      if (deviceId !== undefined) ownDevice(auth, deviceId);
+      const cards = [...workspaces.values()]
+        .filter((ws) => ws.ownerUserId === auth.userId && (deviceId === undefined || ws.deviceId === deviceId))
+        .map((ws) => {
+          const cp = ws.latestCheckpointId ? checkpoints.get(ws.latestCheckpointId) : undefined;
+          return { workspace: strip(ws), ...(cp ? { latestCheckpoint: strip(cp) } : {}) };
+        });
+      return { workspaces: cards };
+    },
+
+    async createWorkspace(auth, req) {
+      requireActiveCaller(auth);
+      ownDevice(auth, req.deviceId);
+      if (req.deviceId !== snapshot.deviceId) throw new ApiError("NOT_FOUND", "No snapshot for this device");
+      if (req.expectedSnapshotRevision !== snapshot.revision) throw new ApiError("STALE_STATE", "Workspace changed; refresh the snapshot");
+      validateNewMembers(req.deviceId, req.selectedResourceIds);
+      validatePrimary(req.selectedResourceIds, req.primaryTabId, "tab", false);
+      validatePrimary(req.selectedResourceIds, req.primaryWindowId, "window", false);
+      const at = iso();
+      const ws: Owned<Workspace> = {
+        id: crypto.randomUUID(),
+        name: req.name,
+        goal: req.goal,
+        deviceId: req.deviceId,
+        resourceIds: req.selectedResourceIds,
+        ...(req.primaryTabId ? { primaryTabId: req.primaryTabId } : {}),
+        ...(req.primaryWindowId ? { primaryWindowId: req.primaryWindowId } : {}),
+        revision: 1,
+        createdAt: at,
+        updatedAt: at,
+        ownerUserId: auth.userId,
+      };
+      workspaces.set(ws.id, ws);
+      return strip(ws);
+    },
+
+    async updateWorkspace(auth, workspaceId, req) {
+      requireActiveCaller(auth);
+      const ws = ownedWorkspace(auth, workspaceId);
+      if (req.expectedRevision !== ws.revision) throw new ApiError("STALE_STATE", "Workspace was edited elsewhere; refetch it");
+      const members = req.selectedResourceIds ?? ws.resourceIds;
+      if (req.selectedResourceIds) validateNewMembers(ws.deviceId, req.selectedResourceIds, ws.resourceIds);
+      const pick = (next: string | null | undefined, current: string | undefined) => (next === undefined ? current : (next ?? undefined));
+      const primaryTabId = pick(req.primaryTabId, ws.primaryTabId);
+      const primaryWindowId = pick(req.primaryWindowId, ws.primaryWindowId);
+      validatePrimary(members, primaryTabId, "tab", primaryTabId === ws.primaryTabId);
+      validatePrimary(members, primaryWindowId, "window", primaryWindowId === ws.primaryWindowId);
+      const next: Owned<Workspace> = {
+        ...ws,
+        name: req.name ?? ws.name,
+        goal: req.goal ?? ws.goal,
+        resourceIds: members,
+        revision: ws.revision + 1,
+        updatedAt: iso(),
+      };
+      delete next.primaryTabId;
+      delete next.primaryWindowId;
+      if (primaryTabId) next.primaryTabId = primaryTabId;
+      if (primaryWindowId) next.primaryWindowId = primaryWindowId;
+      workspaces.set(ws.id, next);
+      return strip(next);
+    },
+
+    async planWorkspaceFocus(auth, workspaceId, req) {
+      requireActiveCaller(auth);
+      return workspacePlan(auth, ownedWorkspace(auth, workspaceId), req, "focus");
+    },
+
+    async planWorkspaceResume(auth, workspaceId, req) {
+      requireActiveCaller(auth);
+      return workspacePlan(auth, ownedWorkspace(auth, workspaceId), req, "resume");
     },
 
     async createPlan(auth, req) {
@@ -129,7 +323,7 @@ export function createFixtureServices(now: () => number = Date.now): Services {
         }
         if (approval.expiresAt <= now()) throw new ApiError("EXPIRED", "Approval expired");
       }
-      if (req.expectedRevision !== F.snapshot.revision) throw new ApiError("STALE_STATE", "Workspace changed since the plan was made");
+      if (req.expectedRevision !== snapshot.revision) throw new ApiError("STALE_STATE", "Workspace changed since the plan was made");
       return newOperation(auth, {
         id: req.operationId,
         planId,
@@ -151,51 +345,55 @@ export function createFixtureServices(now: () => number = Date.now): Services {
       return strip(op);
     },
 
-    async createCheckpoint(auth, _req) {
+    // Metadata + explicit note only: no summary is invented here. Nova's grounded summary replaces this.
+    async createCheckpoint(auth, req) {
       requireActiveCaller(auth);
+      const ws = ownedWorkspace(auth, req.taskId);
+      const nonMember = req.resourceIds.find((rid) => !ws.resourceIds.includes(rid));
+      if (nonMember) throw new ApiError("VALIDATION_ERROR", `Resource ${nonMember} is not a member of this workspace`);
+      const unknown = req.sourceIds.find((sid) => !knownSources.some((s) => s.id === sid));
+      if (unknown) throw new ApiError("NOT_FOUND", `Source ${unknown} not found`);
+      const cp: Owned<Checkpoint> = {
+        id: crypto.randomUUID(),
+        taskId: ws.id,
+        ...(req.userNote ? { userNote: req.userNote } : {}),
+        createdAt: iso(),
+        version: 1,
+        resourceSnapshots: req.resourceIds.map(liveResource).filter((r): r is Resource => r !== undefined),
+        sourceIds: req.sourceIds,
+        summary: [],
+        ownerUserId: auth.userId,
+      };
+      checkpoints.set(cp.id, cp);
+      ws.latestCheckpointId = cp.id;
+      ws.revision += 1;
+      ws.updatedAt = iso();
       return newOperation(auth, {
         id: crypto.randomUUID(),
         status: "succeeded",
-        results: [{ actionId: crypto.randomUUID(), status: "succeeded", checkpointId: F.checkpoint.id }],
+        results: [{ actionId: crypto.randomUUID(), status: "succeeded", workspaceId: ws.id, checkpointId: cp.id }],
       });
     },
 
     async deleteCheckpoint(auth, checkpointId) {
       requireActiveCaller(auth);
-      if (checkpointId !== F.checkpoint.id || auth.userId !== F.users.sam.id) throw new ApiError("NOT_FOUND", "Checkpoint not found");
+      const cp = ownedCheckpoint(auth, checkpointId);
+      checkpoints.delete(checkpointId);
+      const ws = workspaces.get(cp.taskId);
+      if (ws?.latestCheckpointId === checkpointId) {
+        delete ws.latestCheckpointId;
+        ws.revision += 1;
+        ws.updatedAt = iso();
+      }
       return { checkpointId, deleted: true, searchProjection: "pending" };
     },
 
     async resumeCheckpoint(auth, checkpointId, req) {
       requireActiveCaller(auth);
-      if (checkpointId !== F.checkpoint.id || auth.userId !== F.users.sam.id) throw new ApiError("NOT_FOUND", "Checkpoint not found");
-      const plan: Plan = {
-        kind: "plan",
-        id: crypto.randomUUID(),
-        commandId: crypto.randomUUID(),
-        deviceId: req.deviceId,
-        snapshotRevision: req.snapshotRevision,
-        actions: [
-          {
-            actionId: crypto.randomUUID(),
-            action: {
-              kind: "open_saved_url",
-              checkpointId,
-              sourceId: F.sources.heatArticle.id,
-              url: F.sources.heatArticle.url,
-              expectedSourceHash: F.sources.heatArticle.contentHash,
-            },
-          },
-        ],
-        explanation: "FIXTURE RESUME. Reopen the saved heat article.",
-        approvalRequired: true,
-        planHash: "",
-        createdAt: iso(),
-        expiresAt: iso(now() + APPROVAL_TTL_MS),
-      };
-      plan.planHash = `fixture-${plan.id}`;
-      plans.set(plan.id, { ...plan, ownerUserId: auth.userId });
-      return plan;
+      const cp = ownedCheckpoint(auth, checkpointId);
+      const ws = ownedWorkspace(auth, cp.taskId);
+      if (ws.latestCheckpointId !== checkpointId) throw new ApiError("STALE_STATE", "A newer checkpoint exists; resume the workspace instead");
+      return workspacePlan(auth, ws, req, "resume");
     },
 
     async createBrief(auth, req) {

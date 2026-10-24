@@ -48,6 +48,23 @@ Every method returns the Result envelope and validates the response against `@vo
   revisions -> `STALE_STATE`; read-progress revisions; single-use 2-minute pairing nonce confirmed
   by the desktop; revoked devices get `UNAUTHORIZED`.
 
+## Workspaces (revision 1.3)
+
+`GET /v1/workspaces` (cards with latest checkpoint), `POST /v1/workspaces` (Idempotency-Key),
+`PATCH /v1/workspaces/:id` (`expectedRevision`; `null` clears a primary), and
+`POST /v1/workspaces/:id/focus|resume` -> Plan or Clarification, executed through the normal
+approve/execute routes. Checkpoints use `POST /v1/checkpoints` with `taskId = workspaceId` and an
+optional `userNote`.
+
+- Membership is explicit: new members must be live resources on that device; primaries must be
+  selected members of the right kind. Stale snapshot or workspace revisions -> `STALE_STATE`.
+- Focus activates only the primary tab and focuses only the primary window (last), and sets
+  `finalFocusResourceId`. Resume also reopens checkpoint-bound URLs whose tab is gone (needs
+  approval). Missing members are listed as unavailable, never replaced by a title match. No live
+  primary -> a clarification.
+- Fixture checkpoints store metadata + the user note with an empty summary. Nova's grounded summary
+  and Josh's `planWorkspaceFocus/Resume` replace the fixture planner behind `Services`.
+
 ## Not done yet
 
 - State is in memory (lost on restart). Durable state moves to the Spacetime module (`services/sync`).

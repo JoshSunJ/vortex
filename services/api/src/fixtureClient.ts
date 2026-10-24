@@ -5,7 +5,7 @@ import * as F from "@vortex/fixtures";
 import { createApp } from "./app";
 import { createSigner } from "./auth";
 import { createClient, type VortexClient } from "./client";
-import { createFixtureServices } from "./fixtureServices";
+import { createFixtureServices, type FixtureOptions } from "./fixtureServices";
 
 export type FixtureDevice = keyof typeof F.devices;
 
@@ -18,9 +18,9 @@ export type FixtureHarness = {
 // Public, fixture-only signing secret. Never use it for a real server.
 const FIXTURE_SECRET = "vortex-fixture-only-secret-not-for-real-servers";
 
-export async function createFixtureHarness(now: () => number = Date.now): Promise<FixtureHarness> {
+export async function createFixtureHarness(now: () => number = Date.now, options: FixtureOptions = {}): Promise<FixtureHarness> {
   const signer = await createSigner(FIXTURE_SECRET, now);
-  const app = createApp({ services: createFixtureServices(now), signer });
+  const app = createApp({ services: createFixtureServices(now, options), signer });
   const fetchImpl: typeof fetch = async (input, init) => app.fetch(new Request(input, init));
   return {
     fixtures: F,

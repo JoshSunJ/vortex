@@ -1,6 +1,6 @@
 // Request bodies and API-only response shapes from contracts/ANDREW.md Appendix D (Andrew owns these).
 // Wire types (Plan, Brief, Delivery, ...) come from @vortex/contracts and are not redefined here.
-import { Brief, ISODate, Id, Recipient, Scope, Source } from "@vortex/contracts";
+import { Brief, Checkpoint, ISODate, Id, Recipient, Scope, Source, Workspace } from "@vortex/contracts";
 import { z } from "zod";
 import { DeviceKind } from "./auth";
 
@@ -25,9 +25,10 @@ export const ExecuteRequest = z.object({ operationId: Id, expectedRevision: Revi
 export type ExecuteRequest = z.infer<typeof ExecuteRequest>;
 
 export const CheckpointRequest = z.object({
-  taskId: Id,
+  taskId: Id, // = workspaceId
   resourceIds: z.array(Id).max(100),
   sourceIds: z.array(Id).max(5),
+  userNote: z.string().max(2_000).optional(),
   consentId: Id,
 });
 export type CheckpointRequest = z.infer<typeof CheckpointRequest>;
@@ -53,6 +54,38 @@ export type DeliveryRequest = z.infer<typeof DeliveryRequest>;
 
 export const ResumeRequest = z.object({ deviceId: Id, snapshotRevision: Revision });
 export type ResumeRequest = z.infer<typeof ResumeRequest>;
+
+// Workspace routes (ANDREW.md "Workspace services and API additions", revision 1.3).
+export const WorkspaceCreateRequest = z.object({
+  name: Workspace.shape.name,
+  goal: Workspace.shape.goal,
+  deviceId: Id,
+  selectedResourceIds: z.array(Id).min(1).max(100),
+  primaryTabId: Id.optional(),
+  primaryWindowId: Id.optional(),
+  expectedSnapshotRevision: Revision,
+});
+export type WorkspaceCreateRequest = z.infer<typeof WorkspaceCreateRequest>;
+
+/** Omitted fields stay as they are; null clears an optional primary target. */
+export const WorkspaceUpdateRequest = z.object({
+  expectedRevision: Revision,
+  name: Workspace.shape.name.optional(),
+  goal: Workspace.shape.goal.optional(),
+  selectedResourceIds: z.array(Id).min(1).max(100).optional(),
+  primaryTabId: Id.nullable().optional(),
+  primaryWindowId: Id.nullable().optional(),
+});
+export type WorkspaceUpdateRequest = z.infer<typeof WorkspaceUpdateRequest>;
+
+export const WorkspacePlanRequest = z.object({ deviceId: Id, snapshotRevision: Revision });
+export type WorkspacePlanRequest = z.infer<typeof WorkspacePlanRequest>;
+
+/** Dashboard card: the workspace plus its latest checkpoint (for the saved note and Resume). */
+export const WorkspaceCard = z.object({ workspace: Workspace, latestCheckpoint: Checkpoint.optional() });
+export type WorkspaceCard = z.infer<typeof WorkspaceCard>;
+export const WorkspaceList = z.object({ workspaces: z.array(WorkspaceCard) });
+export type WorkspaceList = z.infer<typeof WorkspaceList>;
 
 /** Authorized brief plus scoped source metadata. Source text is never returned here. */
 export const SourceMeta = Source.omit({ text: true });

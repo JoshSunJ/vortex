@@ -1,7 +1,7 @@
 // The one service boundary behind every interface (HTTP routes, desktop, ASI:One adapter).
 // Nova implements the intelligence methods, Josh the local effects, Andrew auth/persistence wiring.
 // Every method receives the verified AuthContext and throws ApiError for typed failures.
-import type { Delivery, Operation, PlanOrClarification, ReadProgress, Snapshot } from "@vortex/contracts";
+import type { Delivery, Operation, PlanOrClarification, ReadProgress, Snapshot, Workspace } from "@vortex/contracts";
 import type { AuthContext } from "./auth";
 import type {
   Approval,
@@ -20,6 +20,10 @@ import type {
   ReadProgressRequest,
   ResumeRequest,
   Revoked,
+  WorkspaceCreateRequest,
+  WorkspaceList,
+  WorkspacePlanRequest,
+  WorkspaceUpdateRequest,
 } from "./schemas";
 
 export interface Services {
@@ -27,6 +31,15 @@ export interface Services {
   readonly label: "fixture" | "live";
 
   getSnapshot(auth: AuthContext, deviceId: string): Promise<Snapshot>;
+
+  // Workspaces (revision 1.3). Andrew persists them; focus/resume plans come from Josh's
+  // planWorkspaceFocus/planWorkspaceResume and run through the ordinary approve/execute path.
+  listWorkspaces(auth: AuthContext, deviceId?: string): Promise<WorkspaceList>;
+  createWorkspace(auth: AuthContext, req: WorkspaceCreateRequest): Promise<Workspace>;
+  updateWorkspace(auth: AuthContext, workspaceId: string, req: WorkspaceUpdateRequest): Promise<Workspace>;
+  planWorkspaceFocus(auth: AuthContext, workspaceId: string, req: WorkspacePlanRequest): Promise<PlanOrClarification>;
+  planWorkspaceResume(auth: AuthContext, workspaceId: string, req: WorkspacePlanRequest): Promise<PlanOrClarification>;
+
   createPlan(auth: AuthContext, req: PlanRequest): Promise<PlanOrClarification>;
   approvePlan(auth: AuthContext, planId: string, req: ApproveRequest): Promise<Approval>;
   executePlan(auth: AuthContext, planId: string, req: ExecuteRequest): Promise<Operation>;

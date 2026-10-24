@@ -80,6 +80,41 @@ export function createApp({ services, signer }: AppOptions) {
     return respond(c, await services.getSnapshot(auth, deviceId));
   });
 
+  // Workspaces (revision 1.3). Focus/resume return plans that run through approve/execute below.
+  app.get("/workspaces", async (c) => {
+    const auth = c.get("auth");
+    requireScopes(auth, ["metadata:read"]);
+    const { deviceId } = parse(z.object({ deviceId: z.uuid().optional() }), c.req.query());
+    return respond(c, await services.listWorkspaces(auth, deviceId));
+  });
+
+  app.post("/workspaces", (c) =>
+    mutation(c, ["metadata:read", "desktop:control"], S.WorkspaceCreateRequest, headerKey(c), (auth, body) => {
+      assertCallingDevice(auth, body.deviceId);
+      return services.createWorkspace(auth, body);
+    }, 201),
+  );
+
+  app.patch("/workspaces/:id", (c) =>
+    mutation(c, ["metadata:read", "desktop:control"], S.WorkspaceUpdateRequest, none, (auth, body) =>
+      services.updateWorkspace(auth, uuidParam(c), body),
+    ),
+  );
+
+  app.post("/workspaces/:id/focus", (c) =>
+    mutation(c, ["desktop:control"], S.WorkspacePlanRequest, none, (auth, body) => {
+      assertCallingDevice(auth, body.deviceId);
+      return services.planWorkspaceFocus(auth, uuidParam(c), body);
+    }),
+  );
+
+  app.post("/workspaces/:id/resume", (c) =>
+    mutation(c, ["desktop:control"], S.WorkspacePlanRequest, none, (auth, body) => {
+      assertCallingDevice(auth, body.deviceId);
+      return services.planWorkspaceResume(auth, uuidParam(c), body);
+    }),
+  );
+
   app.post("/plans", (c) =>
     mutation(c, ["metadata:read", "desktop:control"], S.PlanRequest, none, (auth, body) => {
       assertCallingDevice(auth, body.deviceId);

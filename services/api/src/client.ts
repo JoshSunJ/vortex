@@ -9,6 +9,7 @@ import {
   ResultOf,
   SCHEMA_VERSION,
   Snapshot,
+  Workspace,
   type ErrorCode,
   type Result,
 } from "@vortex/contracts";
@@ -30,7 +31,7 @@ export function createClient({ baseUrl, token, fetch: fetchImpl = globalThis.fet
 
   async function call<T extends z.ZodType>(
     schema: T,
-    method: "GET" | "POST" | "DELETE",
+    method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
     headers: Record<string, string> = {},
@@ -67,6 +68,15 @@ export function createClient({ baseUrl, token, fetch: fetchImpl = globalThis.fet
 
   return {
     getSnapshot: (deviceId: string) => call(Snapshot, "GET", `/snapshot?deviceId=${encodeURIComponent(deviceId)}`),
+    listWorkspaces: (deviceId?: string) =>
+      call(S.WorkspaceList, "GET", `/workspaces${deviceId === undefined ? "" : `?deviceId=${encodeURIComponent(deviceId)}`}`),
+    createWorkspace: (req: S.WorkspaceCreateRequest, idempotencyKey?: string) =>
+      call(Workspace, "POST", "/workspaces", req, idem(idempotencyKey)),
+    updateWorkspace: (workspaceId: string, req: S.WorkspaceUpdateRequest) => call(Workspace, "PATCH", `/workspaces/${workspaceId}`, req),
+    focusWorkspace: (workspaceId: string, req: S.WorkspacePlanRequest) =>
+      call(PlanOrClarification, "POST", `/workspaces/${workspaceId}/focus`, req),
+    resumeWorkspace: (workspaceId: string, req: S.WorkspacePlanRequest) =>
+      call(PlanOrClarification, "POST", `/workspaces/${workspaceId}/resume`, req),
     createPlan: (req: S.PlanRequest) => call(PlanOrClarification, "POST", "/plans", req),
     approvePlan: (planId: string, req: S.ApproveRequest) => call(S.Approval, "POST", `/plans/${planId}/approve`, req),
     executePlan: (planId: string, req: S.ExecuteRequest) => call(Operation, "POST", `/plans/${planId}/execute`, req),
