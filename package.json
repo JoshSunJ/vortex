@@ -22,5 +22,12 @@
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "5.0.5"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "1.2.15",
+    "@rolldown/binding-win32-arm64-msvc": "1.2.15",
+    "@rolldown/binding-darwin-arm64": "1.2.15",
+    "@rolldown/binding-darwin-x64": "1.2.15",
+    "@rolldown/binding-linux-x64-gnu": "1.2.15"
   }
 }
