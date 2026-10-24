@@ -96,7 +96,7 @@ function renderResources() {
   const container = $("resource-list"); container.replaceChildren();
   const all = state.snapshot?.resources || [];
   const query = state.query.trim().toLocaleLowerCase();
-  const shown = all.filter((r) => (state.filter === "all" || r.kind === state.filter) && (!query || `${r.title} ${r.appName || ""} ${r.url || ""}`.toLocaleLowerCase().includes(query)));
+  const shown = all.filter((r) => (state.filter === "all" || r.kind === state.filter) && (!query || query.split(/\s+/).every(word => `${r.title} ${r.appName || ""} ${r.url || ""}`.toLocaleLowerCase().includes(word))));
   $("resource-count").textContent = String(all.length);
   if (!shown.length) container.append(node("div", "empty-resources", all.length ? "No matching windows or tabs. Try another search." : "No windows are available yet. Open an application, then refresh. Browser tabs need the extension connection."));
   for (const item of shown) {
@@ -185,6 +185,40 @@ function showPreview(plan) {
   $("preview-final-focus").textContent = plan.finalFocusResourceId ? `Final keyboard focus: ${resourceName(plan.finalFocusResourceId)}. Windows may still refuse activation.` : "Only the listed actions will run. Closed native applications are not recreated.";
   $("preview-dialog").showModal();
 }
+function checkpointDraft(workspaceId, name, note) {
+  state.noteWorkspaceId = workspaceId;
+  $("note-description").textContent = `For ${name}. Review your note, then save it locally.`;
+  $("checkpoint-note").value = note || "";
+  $("note-dialog").showModal();
+}
+async function reviewCommand(text) {
+  const outcome = await call("previewCommand", text);
+  const container = $("command-result"); container.replaceChildren(); container.hidden = false;
+  if (outcome.kind === "plan") { container.append(node("p", "field-note", "Target resolved. Review the exact focus actions.")); showPreview(outcome.plan); }
+  else if (outcome.kind === "find") {
+    setView("workspaces"); state.query = outcome.query; state.filter = "all"; $("search").value = outcome.query;
+    for (const button of document.querySelectorAll("[data-filter]")) button.classList.toggle("active", button.dataset.filter === "all");
+    await refresh(true); renderResources();
+    container.append(node("p", "field-note", `${outcome.resources.length} matching open resources. Find does not change window focus.`));
+  } else if (outcome.kind === "create_workspace") {
+    setView("workspaces"); createDialog();
+    if ($("create-dialog").open) $("workspace-name").value = outcome.name;
+    else container.append(node("p", "field-note", `Select the windows or tabs for “${outcome.name}”, then review this command again.`));
+  } else if (outcome.kind === "checkpoint") checkpointDraft(outcome.workspaceId, outcome.workspaceName, outcome.userNote);
+  else {
+    container.append(node("p", "field-note", outcome.message));
+    const choices = node("div", "command-choices");
+    for (const choice of outcome.choices || []) {
+      const button = node("button", "button secondary", choice.label); button.type = "button";
+      button.addEventListener("click", () => action(button, async () => {
+        if (outcome.intent === "checkpoint" && choice.kind === "workspace") checkpointDraft(choice.id, choice.label, outcome.userNote);
+        else showPreview(await call(choice.kind === "workspace" ? "previewWorkspace" : "previewResource", choice.id, outcome.intent === "resume" ? "resume" : "focus"));
+      }));
+      choices.append(button);
+    }
+    container.append(choices);
+  }
+}
 async function refresh(quiet = false) {
   if (state.refreshing || document.querySelector("dialog[open]")) return;
   state.refreshing = true; $("refresh").disabled = true;
@@ -210,6 +244,7 @@ for (const button of document.querySelectorAll("[data-close]")) button.addEventL
 for (const dialog of document.querySelectorAll("dialog")) dialog.addEventListener("close", () => { dialog.querySelector(".dialog-notice")?.remove(); if (dialog.id === "preview-dialog") state.pendingPlan = null; });
 for (const button of document.querySelectorAll("[data-filter]")) button.addEventListener("click", () => { state.filter = button.dataset.filter; for (const item of document.querySelectorAll("[data-filter]")) item.classList.toggle("active", item === button); renderResources(); });
 $("search").addEventListener("input", () => { state.query = $("search").value; renderResources(); });
+$("command-form").addEventListener("submit", event => { event.preventDefault(); action($("command-submit"), () => reviewCommand($("command-text").value.trim())); });
 $("refresh").addEventListener("click", () => refresh());
 $("connect-refresh").addEventListener("click", () => refresh());
 $("connect-shortcut").addEventListener("click", () => setView("connect"));
