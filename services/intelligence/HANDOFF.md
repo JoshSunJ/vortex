@@ -169,3 +169,20 @@ bodies. It has no internal retries: the shared helper owns the two-call budget a
 deadlines. 401/403 become sanitized FORBIDDEN; 429 stops with CONTENT_UNAVAILABLE.
 The client cannot enforce Google account billing status; confirm Free tier before
 live use. See README for readiness and explicit synthetic live-check commands.
+
+## Linked Fetch dispatch boundary
+
+`../fetch-agent/src/linked-dispatch.mjs` now reuses this workspace dispatcher for
+verified, linked agent messages. It requires trusted transport verification,
+sender/session-to-user/device linking, scoped inventory and selection, explicit
+command grants/scopes, and a fresh consent/revocation policy check. Two-minute
+message expiry and deterministic service command IDs support shared authorization
+and idempotency. It adds no executor, persistence store or alternate content path.
+
+See [the Fetch integration README](../fetch-agent/README.md) for exact dependency
+seams and missing work. Its 19 offline tests use doubles. Python ACP hosting,
+Agentverse registration, real account linking, remote approval/execution,
+operation polling, and ASI:One conversation parity remain incomplete. Conservative
+chat formatting omits private result payloads and does not report queued work as
+completed delivery. No shared contract, API route, root dependency or provider
+adapter was changed for this slice.
