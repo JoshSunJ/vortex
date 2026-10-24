@@ -4,8 +4,9 @@ import { z } from "zod";
 import { Id, Workspace, Plan, SCHEMA_VERSION } from "@vortex/contracts";
 import { ControlEngine } from "./control.ts";
 import { ControlError, ensure } from "./errors.ts";
+import { LocalWorkspaces } from "./workspaces.ts";
 
-export type ServerOptions = { token: string; extensionId?: string };
+export type ServerOptions = { token: string; extensionId?: string; onExtensionIdChanged?: (id: string) => void };
 const Execute = z.strictObject({ operationId: Id, expectedRevision: z.number().int().nonnegative(), approvalId: Id.optional() });
 const WorkPlan = z.strictObject({ workspace: Workspace, snapshotRevision: z.number().int().nonnegative() });
 const Approve = z.strictObject({ planHash: z.string(), confirmed: z.literal(true) });
@@ -14,7 +15,7 @@ function equal(a: string, b: string) { const x = Buffer.from(a), y = Buffer.from
 export function createControlServer(engine: ControlEngine, options: ServerOptions) {
   ensure(options.token.length >= 32, "VALIDATION_ERROR", "Control token must be at least 32 characters.");
   ensure(!options.extensionId || /^[a-p]{32}$/.test(options.extensionId), "VALIDATION_ERROR", "Use the exact Chrome/Edge extension ID.");
-  const extensionOrigin = options.extensionId ? `chrome-extension://${options.extensionId}` : undefined;
+  const workspaces = new LocalWorkspaces(engine);
   const server = createServer(async (req, res) => {
     const requestId = randomUUID();
     res.setHeader("Cache-Control", "no-store");
@@ -22,6 +23,7 @@ export function createControlServer(engine: ControlEngine, options: ServerOption
     res.setHeader("X-Content-Type-Options", "nosniff");
     const json = (status: number, data: unknown) => { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(data)); };
     try {
+      const extensionOrigin = options.extensionId ? `chrome-extension://${options.extensionId}` : undefined;
       const address = server.address();
       const port = typeof address === "object" && address ? address.port : 8790;
       ensure(req.headers.host === `127.0.0.1:${port}`, "FORBIDDEN", "Only the exact loopback host is accepted.");
@@ -49,7 +51,21 @@ export function createControlServer(engine: ControlEngine, options: ServerOption
       const match = /^\/control\/plans\/([0-9a-f-]+)\/(approve|execute)$/.exec(url.pathname);
       const op = /^\/control\/operations\/([0-9a-f-]+)(\/cancel)?$/.exec(url.pathname);
       if (req.method === "GET" && url.pathname === "/control/snapshot") result = await engine.getSnapshot();
-      else if (req.method === "GET" && url.pathname === "/control/status") result = { browserConnected: Boolean(engine.browser.current()), deviceId: engine.deviceId, supportedActions: ["activate_tab", "group_tabs", "focus_window", "open_saved_url"], voiceConnected: false };
+      else if (req.method === "GET" && url.pathname === "/control/status") result = { browserConnected: Boolean(engine.browser.current()), deviceId: engine.deviceId, supportedActions: ["activate_tab", "group_tabs", "focus_window", "open_saved_url"], voiceConnected: false, extensionId: options.extensionId, workspaceStorage: "local" };
+      else if (req.method === "GET" && url.pathname === "/control/workspaces") result = workspaces.list();
+      else if (req.method === "POST" && url.pathname === "/control/workspaces") result = await workspaces.create(body);
+      else if (req.method === "POST" && url.pathname === "/control/checkpoints") result = await workspaces.save(body);
+      else if (req.method === "GET" && url.pathname === "/control/operations") result = workspaces.operations();
+      else if (req.method === "POST" && url.pathname === "/control/workspace-preview") {
+        const value = z.strictObject({ workspaceId: Id, mode: z.enum(["focus", "resume"]) }).parse(body);
+        result = await workspaces.preview(value.workspaceId, value.mode);
+      }
+      else if (req.method === "POST" && url.pathname === "/control/settings/extension") {
+        const value = z.strictObject({ extensionId: z.string().regex(/^[a-p]{32}$/) }).parse(body);
+        options.onExtensionIdChanged?.(value.extensionId);
+        options.extensionId = value.extensionId;
+        result = { extensionId: value.extensionId };
+      }
       else if (req.method === "POST" && url.pathname === "/control/plans") result = engine.registerPlan(Plan.parse(body));
       else if (req.method === "POST" && url.pathname === "/control/focus") result = await engine.planResourceFocus(z.strictObject({ resourceId: Id }).parse(body).resourceId);
       else if (req.method === "POST" && ["/control/workspaces/focus", "/control/workspaces/resume"].includes(url.pathname)) {

@@ -29,6 +29,9 @@ export class Journal {
   set(key: string, value: unknown) {
     this.db.prepare("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(key, JSON.stringify(value));
   }
+  list<T>(prefix: string): T[] {
+    return this.db.prepare("SELECT value FROM kv WHERE substr(key,1,?)=? ORDER BY key").all(prefix.length, prefix).map(row => JSON.parse(String(row.value)) as T);
+  }
   id(key: string): string {
     let value = this.get<string>(key);
     if (!value) { value = randomUUID(); this.set(key, value); }

@@ -34,7 +34,10 @@ async function main() {
     writeFileSync(configPath, JSON.stringify(value, null, 2), { mode: 0o600 });
     const journal = new Journal(join(dataDir, "control.sqlite"));
     const engine = new ControlEngine(journal, new BrowserBridge(), new NativeWindowsAdapter());
-    const server = createControlServer(engine, value);
+    const server = createControlServer(engine, { ...value, onExtensionIdChanged: id => {
+      value.extensionId = id;
+      writeFileSync(configPath, JSON.stringify(value, null, 2), { mode: 0o600 });
+    } });
     await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(8790, "127.0.0.1", resolve); });
     console.log("Vortex local control: http://127.0.0.1:8790 (development only)");
     console.log("Run snapshot in a second terminal. Browser bridge requires VORTEX_EXTENSION_ID and explicit extension setup; Cartesia is not connected yet.");
