@@ -22,3 +22,9 @@ Read TEAM_CONTRACT.md, your named contract under contracts/, repository instruct
 Implement a narrow vertical slice first. Propose shared schema changes before editing them. Do not independently rename fields, routes, states, timestamps or action kinds. Do not add another database, orchestration framework or alternate execution path without team coordination. Keep secrets out of source, browser renderers and logs. Never execute model-generated shell/script text. The local executor is the only authority for OS/browser mutations.
 
 For each change, report: files changed; behavior delivered; checks run and results; remaining limitations; any required contract change. Do not describe planned behavior as already implemented. A fallback path does not count as evidence that the sponsor path works.
+
+## Current product boundary - document revision 1.3
+
+Implement a voice-controlled workspace manager for unfinished tasks. The six user commands are Find, Create workspace, Focus, Save checkpoint, Send brief and Resume. Read [the operating boundary](TEAM_CONTRACT.md), [Workspace model](contracts/JOSH.md#workspace-model) and [workspace routes](contracts/ANDREW.md#workspace-api) before implementing them. Membership is user-selected; native windows provide identity/title/focus only. No generic click/type/script tools, document editing, automatic closing, universal app control or remote desktop.
+
+Updated gates: 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze. Wire envelope stays 1.0 through additive Workspace APIs and optional fields. Existing `taskId` means Workspace.id; do not create a separate Task store or break existing field names.

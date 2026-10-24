@@ -1,6 +1,6 @@
 # Vortex team contracts
 
-Version 1.2 | 25 October 2026 | Windows | Wire schema 1.0
+Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
 The full contract is now split into **four teammate files in [contracts/](contracts/)**. This root document is the entry point; it replaces the previous monolithic contract. Shared technical requirements remain authoritative in the linked owner files.
 
@@ -15,7 +15,7 @@ The full contract is now split into **four teammate files in [contracts/](contra
 
 ## Shared time window
 
-11 AM-10 PM on Josh's supplied team clock. **1 PM:** real control. **3 PM:** real phone vertical slice. **5 PM:** sponsor evidence. **6:30 PM:** feature freeze. **8 PM:** release candidate. **9:45 PM:** demo-ready. **9:45-10 PM:** contingency buffer only. Organizer submission timing is separate.
+11 AM-10 PM on Josh's supplied team clock. **11:30 AM:** scope frozen. **1 PM:** real control. **3 PM:** saved workspace, switch and resume. **5 PM:** grounded checkpoint, real phone brief and sponsor traces. **6:30 PM:** ASI:One parity/failure cases and feature freeze. **8 PM:** release candidate. **9:45 PM:** demo-ready. **9:45-10 PM:** contingency buffer only. Organizer submission timing is separate.
 
 Read [Andrew's full owner-by-owner schedule](contracts/ANDREW.md#team-schedule).
 
@@ -23,30 +23,49 @@ Read [Andrew's full owner-by-owner schedule](contracts/ANDREW.md#team-schedule).
 
 Read [AGENTS.md](AGENTS.md), then the named teammate file. Before touching a shared interface, also read [Josh's wire/execution contract](contracts/JOSH.md#wire-contract) and [Andrew's API/auth/sync contract](contracts/ANDREW.md#api-contract). Do not create competing copies of canonical schemas. Consult [Nova's sponsor map](contracts/NOVA.md) and [sources](contracts/ANDREW.md#sources) for integration evidence requirements.
 
-## 01 / Product decision brief
+## Product definition and operating boundary
 
-### A workspace that follows you
+**Vortex is a voice-controlled workspace manager for unfinished tasks.** It organizes selected browser tabs and application windows around a named task, saves where the user stopped, delivers a useful reading brief to another device and helps the user resume.
 
-**Working name: Vortex.** A Windows voice workspace assistant that finds your open work, creates a useful checkpoint, and lets you continue reading or collaborating on another device.
+The problem is: **"My work is scattered across my computer, and switching tasks makes me lose context."** The unit of organization is a workspace, not an individual tab or an unrestricted computer-use session. OS integration earns its place by coordinating related tabs and native windows as one task; expanding control just for novelty is not a product advantage.
 
-**Core promise:** "Tell your computer what matters. Take the useful context with you." This is a proposed design and work contract, not an implemented product or a guarantee of prizes.
+| Area | Included in the MVP | Outside the MVP |
+| --- | --- | --- |
+| Browser | Find, group, activate and reopen saved HTTP(S) URLs | Complete arbitrary website workflows, forms or purchases |
+| Native applications | List ordinary top-level windows, identify selected ones, bring a designated live window forward | Read arbitrary application contents, click buttons, type, edit documents or close applications |
+| Workspaces | User-selected membership, named goal, primary targets, create/focus/resume | Automatically infer every project or inspect everything on the laptop |
+| Checkpoints | Selected browser evidence, explicit user note, grounded summary and labeled proposed next step | Recover unsaved state or infer completed work from window titles |
+| Phone | Explicitly deliver a source-linked article or workspace briefing to a paired device | General remote desktop/keyboard control |
 
-#### Decisions to build around
+### Six bounded commands
 
-- **Focus on workspace continuity.** The dashboard organizes tabs, windows, tasks and checkpoints. Reading support belongs inside that workflow. A separate tutoring platform, courses and quizzes are out of scope.
+1. **Find:** "Find the article about battery recycling."
+2. **Create workspace:** "Put these selected tabs and my notes window into Group Project."
+3. **Focus:** "Switch to Group Project."
+4. **Save checkpoint:** "Save where I stopped. Next I need to compare the costs."
+5. **Send brief:** "Send this article's key points to my phone."
+6. **Resume:** "Continue Group Project."
 
-- **Profession-agnostic product; one concrete demo.** Use research for a group project as the example. The same task/source/checkpoint structure works for students, professionals and personal projects.
+Workspace membership starts with user selection and can be edited explicitly. AI suggests related resources, resolves spoken names, summarizes permitted browser sources and labels inferred next steps. Deterministic code validates membership, chooses the saved primary tab/native window and executes only allowlisted actions. It cannot activate all tabs simultaneously.
 
-- **Windows desktop app + thin Chrome extension.** The app controls supported OS windows; the extension supplies reliable browser tab identity and permitted page text. This is OS-integrated software, not a new OS or universal control of every application.
+**Resume means:** reuse matching live tabs/windows; reopen saved HTTP(S) URLs when needed; focus designated primary targets; display the checkpoint. Missing native windows are shown as unavailable. Vortex does not recreate closed native applications, restore their documents or promise unsaved-state recovery. Saving a checkpoint never closes applications or tabs.
 
-- **Phone is a reading companion first.** Explicitly send an article brief or checkpoint to a paired phone. General remote keyboard/mouse control is deferred.
+**Dashboard:** Workspaces, Checkpoints and Devices. The active workspace shows its goal, selected resources, transcript, action preview, last checkpoint and Focus / Resume / Send brief actions. Automatic stale-tab cleanup and a separate learning platform are deferred.
 
-- **Social handoff is explicit.** Preview a project briefing before granting a teammate access. Personal phone sync and sharing with another person are different permissions.
+**Optional stretch:** one "browser left, notes right" layout preset, only after the required journey passes and before feature freeze. It requires reviewed typed bounds/undo and explicit user approval; it stays disabled by default. No general window manager, screenshot surveillance, generated scripts, filesystem edits or arbitrary click/type tools.
 
-#### Required minimum and deliberate exclusions
+### Demo story and done criteria
 
-Required: push-to-talk, find/switch/group tabs, focus a supported Windows window, task dashboard, checkpoint creation, source-linked phone brief, resume task, visible operation status, all six sponsor integrations with evidence. Closing/archiving tabs is deferred for this sprint; stale-tab suggestions may offer Keep / Snooze / Save checkpoint without closing anything.
+Create Group Project with research tabs and a native notes window -> focus it by voice -> save a checkpoint from selected sources plus a user note -> send an article brief to a real phone -> resume Group Project and show the saved next step. A title match alone does not prove the app's document contents. Measure correct target resolution and time to resume rather than claiming that fewer tabs imply better focus.
 
-Excluded: arbitrary shell commands, deleting files, closing native apps, unsaved-form recovery guarantees, general screen scraping, unattended purchases/messages, always-listening microphone, native iOS/Android apps, full remote desktop and a second OS.
+Windows remains the only supported desktop platform for this demo. Josh owns A, Nova B and Andrew C; Nathan remains optional noncritical support. Meta, Elastic, Spacetime, Cartesia, Apify and Fetch.ai remain selected; sponsor eligibility still requires actual evidence and the event rules.
 
-**Confirmed by Josh:** Windows; Meta, Elastic, Spacetime, Cartesia, Apify and Fetch.ai. Required owners are Josh (A), Nova (B) and Andrew (C). Nathan is optional support and absent at kickoff. The team has 11 AM-10 PM on its supplied clock; aim to be demo-ready by 9:45 PM. Document date: 25 October 2026.
+
+## Canonical implementation references
+
+- [Workspace type and bounded intent/execution rules](contracts/JOSH.md#workspace-model).
+- [Workspace API and persistence](contracts/ANDREW.md#workspace-api).
+- [Owner-by-owner revised milestones](contracts/ANDREW.md#team-schedule).
+- [Provider behavior and ASI:One workflow](contracts/NOVA.md#bounded-intents).
+
+Document revision 1.3 updates the product scope and milestones. Wire envelope version stays 1.0: workspace endpoints/types are additive; existing `taskId` fields refer to the same Workspace ID. These are implementation specifications, not a claim that code is already complete.
