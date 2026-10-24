@@ -7,9 +7,12 @@ interface and Hono authentication routes. Content drafts now use the actual
 ## Branch dependency and ownership
 
 Started from `origin/main` at `c0a10cc`, then merged published Owner A branch
-`feat/control` at `a270752` into this feature branch only. That branch carries
-Andrew's API/contracts/fixtures as imported by Josh. No A/C source file, root
-configuration, lockfile, wire schema or route was edited by this feature.
+`feat/control` at `a270752` into this feature branch only, then updated that
+dependency to `f319ef5` (direct voice previews and Cartesia spoken replies).
+That branch carries Andrew's API/contracts/fixtures as imported by Josh.
+Root configuration, lockfile, wire schema and routes are unchanged. A narrow
+integration fix in `apps/desktop/src/control.ts` is described below for Josh's
+review; other A/C implementation files are imported unchanged.
 
 `main` and teammate branches were not changed. The separate Fetch boundary on
 `codex/owner-b-fetch-boundary` is not a dependency of this slice. Andrew should
@@ -86,9 +89,28 @@ the real operation receipt; draft creation alone is not delivery.
 
 ## Checks
 
+Latest dependency check: 96 Vitest tests passed, including the new expiry
+regression and Josh's latest voice-preview/TTS cases. Root and desktop TypeScript
+checks passed. The synthetic API/content demonstration passed without provider
+calls or desktop effects.
+
+### Plan timestamp race found during integration
+
+An unmodified desktop workspace test intermittently failed because `savePlan`
+read `new Date()` for creation and `Date.now()` separately for expiry. A 1 ms tick
+between reads produced a lifetime of 120001 ms, rejected by the executor's
+existing 120000 ms upper bound. The deterministic regression in
+`test/plan-expiry.integration.spec.mjs` failed before the fix and passes after it.
+
+The fix captures `Date.now()` once and derives both timestamps from that reading.
+The two-minute policy, action vocabulary, approval rules and wire fields are
+unchanged. The regression uses an in-memory journal and mock native adapter;
+it never focuses a real window. Josh should review this small control-file change.
+
 ```powershell
 node node_modules/typescript/bin/tsc -p tsconfig.json
-node node_modules/vitest/vitest.mjs run services/intelligence/test/api-planner.integration.test.ts services/intelligence/test/canonical-content.integration.test.ts
+node node_modules/typescript/bin/tsc -p apps/desktop/tsconfig.json
+node node_modules/vitest/vitest.mjs run services/intelligence/test/api-planner.integration.test.ts services/intelligence/test/canonical-content.integration.test.ts services/intelligence/test/plan-expiry.integration.spec.mjs
 ```
 
 The new integration suite covers the actual HMAC/API/schema path, workspace

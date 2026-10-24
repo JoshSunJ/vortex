@@ -80,10 +80,11 @@ export class ControlEngine {
     return plan;
   }
   private savePlan(actions: Plan["actions"], snapshot: Snapshot, explanation: string, finalFocusResourceId?: string, workspaceId?: string): Plan {
+    const createdAt = Date.now();
     const plan: Plan = {
       kind: "plan", id: randomUUID(), commandId: randomUUID(), deviceId: this.deviceId,
       snapshotRevision: snapshot.revision, actions, explanation, approvalRequired: true,
-      planHash: "", createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 120_000).toISOString(),
+      planHash: "", createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(createdAt + 120_000).toISOString(),
       ...(finalFocusResourceId ? { finalFocusResourceId } : {}), ...(workspaceId ? { workspaceId } : {}),
     };
     plan.planHash = hashPlan(plan);

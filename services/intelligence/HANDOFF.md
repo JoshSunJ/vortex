@@ -188,11 +188,16 @@ does not call any provider or persist/deliver drafts.
 See [API_INTEGRATION.md](API_INTEGRATION.md) and run
 `node --import tsx services/intelligence/api-demo.mjs` with Node 24+. This is an
 in-process MOCK demonstration through the actual authenticated API and canonical
-validators. The dependent API/contracts/UI are imported unchanged from Josh's
-published `feat/control` at `a270752`. No default API server or Electron UI
-entrypoint was rewired; app hookup remains coordinated with Andrew/Josh.
+validators. The dependent API/contracts/UI were imported from Josh's published
+`feat/control` at `a270752`, then updated to `f319ef5` for direct voice previews
+and Cartesia TTS. A minimal plan-timestamp fix in `apps/desktop/src/control.ts`
+uses one clock reading to prevent self-rejection at the two-minute expiry bound;
+the deterministic regression fails before this fix and passes afterward. Josh
+should review it. Other A/C code is unchanged. No default API server or Electron
+UI entrypoint was rewired; app hookup remains coordinated with Andrew/Josh.
 
-Verification: TypeScript check passed; shared TS suites plus 13 new integration
-tests passed (86 tests total); legacy B Node suite passed 85 with one Windows
+Verification: root and desktop TypeScript checks passed; shared suites plus B
+integration/expiry cases passed (96 tests total after the latest voice update).
+The unchanged legacy B Node suite previously passed 85 with one Windows
 symlink-privilege skip. Loopback server tests require local communication permission
 in the Codex sandbox. No package or model versions were changed.
