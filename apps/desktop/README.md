@@ -1,6 +1,8 @@
-# Josh / owner A: first control slice
+# Vortex desktop preview
 
-This is a **headless local control core and command-line harness**, not the finished Electron dashboard or voice assistant. It uses the existing `@vortex/contracts`; it does not replace Andrew's API, workspace persistence, auth or Nova's planning service.
+Vortex now has a visible Windows Electron dashboard backed by the real local control engine. Select open windows or connected browser tabs, save them as a task workspace, leave a checkpoint note, and review a focus/resume preview before approving it. Workspace cards and notes persist locally in SQLite. This standalone local mode uses the existing `@vortex/contracts`; Andrew's cloud API and Nova's planning service are not required to try it.
+
+Voice, AI summaries, phone handoff and reconstruction of closed native applications are not connected in this preview. Resume focuses saved primary resources that are still available; it does not restore a full desktop layout or reopen closed tabs.
 
 Implemented:
 
@@ -17,9 +19,19 @@ From the repository root, using Node 24 or later:
 
 ```powershell
 npm ci
-./native/windows/build.ps1
-npm run dev -w @vortex/desktop
+npm run desktop -w @vortex/desktop
 ```
+
+The launcher builds the narrow Windows helper automatically when necessary. Electron starts its local controller in the background and stops that child when the app quits. Run in your normal interactive Windows session. No cloud keys are required for local mode. If a corporate machine blocks the Electron download during installation, use the official Electron package download instructions rather than disabling endpoint protections.
+
+In the dashboard:
+
+1. Select resources under **Open on this computer**, then choose **Create workspace**.
+2. Give the task a name/goal and choose its primary tab or window.
+3. Choose **Save checkpoint** and record where you stopped and what comes next.
+4. Choose **Resume**, inspect the listed targets, then confirm the action. Activity shows its actual outcome.
+
+To run only the headless controller, use `npm run control -w @vortex/desktop` instead of the desktop command.
 
 In another terminal:
 
@@ -33,15 +45,9 @@ npm run focus -w @vortex/desktop -- <resource-UUID-from-snapshot>
 ## Connect Chrome or Edge explicitly
 
 1. Follow [the extension setup](../extension/README.md) to load `apps/extension` unpacked and copy its ID. This step is manual; don't assume the extension is installed.
-2. Stop the service, then configure the exact ID and restart:
-
-```powershell
-$env:VORTEX_EXTENSION_ID = '<32-character-extension-ID>'
-npm run dev -w @vortex/desktop
-```
-
-3. In a separate local terminal run `npm run pair -w @vortex/desktop`. This **explicit command reveals the local bearer token** so you can paste it into the extension options; don't put it in screenshots, issues, URLs or Git. It is not a cloud/provider key.
-4. Choose **Save and start** in the extension options. Wait for Connected, then run snapshot again. Only HTTP(S) tabs are included.
+2. In Vortex, open **Connect browser**, paste the exact extension ID and save it. No restart is required.
+3. Choose **Copy local token**, then paste it only into the Vortex extension options. The token is kept out of renderer data and the visible interface. Do not put it in screenshots, issues, URLs or Git. Headless users can explicitly reveal it with `npm run pair -w @vortex/desktop`.
+4. Choose **Save and start** in the extension options. Wait for Connected, then refresh Vortex. Only HTTP(S) tabs are included.
 
 State/config live in ignored `apps/desktop/.vortex/`. Keep that directory private and never upload it. The bridge binds only `127.0.0.1:8790`. Other origins, missing tokens and wrong Hosts are rejected. This fallback transport has not been promoted to production native messaging.
 
@@ -70,6 +76,8 @@ For saved-URL dispatch, the trusted checkpoint service first calls `registerChec
 Local HTTP endpoints use `/control/` so they cannot be confused with Andrew's `/v1` API:
 
 - GET `/control/snapshot`, `/control/status`, `/control/operations/:id`.
+- GET `/control/workspaces`, POST `/control/workspaces` (create), POST `/control/checkpoints` (save note/metadata), GET `/control/operations` (recent receipts).
+- POST `/control/workspace-preview` `{workspaceId,mode}` and `/control/settings/extension` `{extensionId}`.
 - POST `/control/focus` `{resourceId}` and `/control/workspaces/focus|resume` `{workspace,snapshotRevision}`.
 - POST `/control/plans` (validated external plan), `/control/plans/:id/approve` `{planHash,confirmed:true}`, `/control/plans/:id/execute` `{operationId,expectedRevision,approvalId}`.
 - POST `/control/operations/:id/cancel`. Cancellation is not rollback and an already dispatched browser action can finish.
@@ -84,7 +92,9 @@ npm run typecheck -w @vortex/desktop
 ./node_modules/.bin/tsx.cmd apps/desktop/scripts/smoke.ts
 ```
 
-Unit tests cover changed/recycled targets, missing exact approval, duplicate concurrent execution, disabled actions, interrupted receipts, focus denial, unavailable workspace primaries, browser timeout and token/Origin checks. Extension tests cover URL/target validation and exclude private page contents. Read-only smoke checks exercise the real Windows helper through the real local HTTP server without focusing a user's window.
+Unit tests cover changed/recycled targets, missing exact approval, duplicate concurrent execution, disabled actions, interrupted receipts, focus denial, unavailable workspace primaries, browser timeout and token/Origin checks. Workspace tests check canonical identity, selected primary membership, saved user notes and preview without side effects. Extension tests cover URL/target validation and exclude private page contents. Read-only smoke checks exercise the real Windows helper through the real local HTTP server without focusing a user's window.
+
+The Electron renderer is sandboxed with context isolation, no Node access and a restrictive content security policy. Its fixed preload methods validate the sending main frame; local tokens and direct network/file access remain in the main process. All external navigation and permission requests are denied in this preview.
 
 Still requires real manual demo-device verification: extension activation/grouping, user-approved native focus and browser-worker suspension/reconnection. Unit adapter mocks are labeled test doubles and are not live evidence.
 
@@ -92,7 +102,7 @@ Still requires real manual demo-device verification: extension activation/groupi
 
 1. Manually pair/load the extension, then verify real activation/grouping and reconnect.
 2. Wire the engine into Andrew's authenticated live `Services` implementation and durable workspace/checkpoint store.
-3. Add the Electron push-to-talk surface and Cartesia transcription/reply using a real provider key. **No microphone capture or Cartesia integration is connected in this slice.**
+3. Add push-to-talk and Cartesia transcription/reply using a real provider key. **No microphone capture or Cartesia integration is connected in this slice.**
 4. Implement reviewed checkpoint-driven reopening/rebinding for closed tabs, then repeat the full workspace pause/resume journey.
 
 Archive/closing, arbitrary click/type/scripts, native document contents and layout changes remain disabled. Nathan has no critical dependency. The root lockfile repair only fills missing optional-platform metadata and registers this new workspace; no existing requested dependency versions were changed.
