@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('vortex', Object.freeze({
   beginVoiceCapture: value => ipcRenderer.invoke('vortex:beginVoiceCapture', value),
   transcribeVoice: value => ipcRenderer.invoke('vortex:transcribeVoice', value),
   cancelVoice: id => ipcRenderer.invoke('vortex:cancelVoice', id),
+  speakStatus: code => ipcRenderer.invoke('vortex:speakStatus', code),
+  cancelSpeech: () => ipcRenderer.invoke('vortex:cancelSpeech'),
   listOperations: () => ipcRenderer.invoke('vortex:listOperations'),
   setExtensionId: id => ipcRenderer.invoke('vortex:setExtensionId', id),
   copyBridgeToken: () => ipcRenderer.invoke('vortex:copyBridgeToken'),
