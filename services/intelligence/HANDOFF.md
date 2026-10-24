@@ -201,3 +201,20 @@ integration/expiry cases passed (96 tests total after the latest voice update).
 The unchanged legacy B Node suite previously passed 85 with one Windows
 symlink-privilege skip. Loopback server tests require local communication permission
 in the Codex sandbox. No package or model versions were changed.
+
+## Linked Fetch dispatch boundary
+
+`../fetch-agent/src/linked-dispatch.mjs` now reuses this workspace dispatcher for
+verified, linked agent messages. It requires trusted transport verification,
+sender/session-to-user/device linking, scoped inventory and selection, explicit
+command grants/scopes, and a fresh consent/revocation policy check. Two-minute
+message expiry and deterministic service command IDs support shared authorization
+and idempotency. It adds no executor, persistence store or alternate content path.
+
+See [the Fetch integration README](../fetch-agent/README.md) for exact dependency
+seams and missing work. Its 19 offline tests use doubles. Python ACP hosting,
+Agentverse registration, real account linking, remote approval/execution,
+operation polling, and ASI:One conversation parity remain incomplete. Conservative
+chat formatting omits private result payloads and does not report queued work as
+completed delivery. No shared contract, API route, root dependency or provider
+adapter was changed for this slice.
