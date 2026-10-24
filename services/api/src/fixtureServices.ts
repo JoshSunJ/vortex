@@ -7,6 +7,7 @@ import { DEFAULT_SCOPES, type AuthContext } from "./auth";
 import { ApiError } from "./envelope";
 import type { Device, Pairing } from "./schemas";
 import type { Services } from "./services";
+import type { SyncWriter } from "./sync";
 
 const APPROVAL_TTL_MS = 2 * 60_000;
 const PAIRING_TTL_MS = 2 * 60_000;
@@ -17,6 +18,8 @@ type Owned<T> = T & { ownerUserId: string };
 export type FixtureOptions = {
   /** Override the desktop snapshot, e.g. to simulate a closed native window. */
   snapshot?: Snapshot;
+  /** When set, pairing, deliveries and revocation are also written to SpacetimeDB. */
+  sync?: SyncWriter;
 };
 
 export function createFixtureServices(now: () => number = Date.now, options: FixtureOptions = {}): Services {
@@ -40,7 +43,7 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
     Object.values(F.deliveries).map((d) => [d.id, { ...clone(d), ownerUserId: F.users.sam.id }]),
   );
   const progress = new Map<string, ReadProgress>([[`${F.readProgress.briefId}:${F.readProgress.deviceId}`, clone(F.readProgress)]]);
-  const pairings = new Map<string, { pairing: Pairing; userId: string; desktopDeviceId: string; claimed?: { name: string; userId: string } ; used: boolean }>();
+  const pairings = new Map<string, { pairing: Pairing; userId: string; desktopDeviceId: string; claimed?: { name: string; userId: string; syncIdentity?: string }; used: boolean }>();
 
   const workspaces = new Map<string, Owned<Workspace>>(
     (Object.values(F.workspaces) as Workspace[]).map((w) => [w.id, { ...clone(w), ownerUserId: F.users.sam.id }]),
@@ -49,6 +52,16 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
   const knownSources = Object.values(F.sources) as Source[];
 
   const strip = <T extends { ownerUserId: string }>({ ownerUserId: _, ...rest }: T) => rest;
+
+  /** Runs a SpacetimeDB write; failures become a retryable STORAGE_FAILED without leaking details. */
+  async function toSync(write: () => Promise<void> | undefined) {
+    try {
+      await write();
+    } catch (err) {
+      console.error("[sync]", err);
+      throw new ApiError("STORAGE_FAILED", "Couldn't reach the device mailbox. Try again.", true);
+    }
+  }
   const liveResource = (resourceId: string): Resource | undefined => snapshot.resources.find((r) => r.id === resourceId);
 
   function ownedWorkspace(auth: AuthContext, workspaceId: string) {
@@ -439,6 +452,8 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
         status: "available",
         ownerUserId: auth.userId,
       };
+      // Write to the shared mailbox first: a delivery only counts once paired devices can receive it.
+      await toSync(() => options.sync?.deliver(brief, strip(delivery)));
       deliveries.set(delivery.id, delivery);
       return strip(delivery);
     },
@@ -480,7 +495,7 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
       if (entry.used || entry.claimed) throw new ApiError("EXPIRED", "Pairing code already used");
       if (Date.parse(entry.pairing.expiresAt) <= now()) throw new ApiError("EXPIRED", "Pairing code expired");
       if (auth.userId !== entry.userId) throw new ApiError("FORBIDDEN", "Pairing belongs to another user");
-      entry.claimed = { name: req.phoneDeviceName, userId: auth.userId };
+      entry.claimed = { name: req.phoneDeviceName, userId: auth.userId, ...(req.syncIdentity ? { syncIdentity: req.syncIdentity } : {}) };
       return { pairingId, status: "pending_confirmation", phoneDeviceName: req.phoneDeviceName };
     },
 
@@ -491,7 +506,6 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
       if (!entry.claimed) throw new ApiError("VALIDATION_ERROR", "No phone has claimed this pairing yet");
       if (entry.used) throw new ApiError("EXPIRED", "Pairing already confirmed");
       if (Date.parse(entry.pairing.expiresAt) <= now()) throw new ApiError("EXPIRED", "Pairing code expired");
-      entry.used = true;
       const device: Device = {
         id: crypto.randomUUID(),
         userId: auth.userId,
@@ -500,16 +514,24 @@ export function createFixtureServices(now: () => number = Date.now, options: Fix
         scopes: DEFAULT_SCOPES.phone,
         pairedAt: iso(),
       };
+      // Tell SpacetimeDB which connection is this phone, so its views show this user's deliveries.
+      const syncIdentity = entry.claimed.syncIdentity;
+      if (syncIdentity) {
+        await toSync(() => options.sync?.bindDevice({ syncIdentity, userId: auth.userId, deviceId: device.id, kind: "phone" }));
+      }
+      entry.used = true;
       devices.set(device.id, { ...device, revoked: false });
       return device;
     },
 
     async revokeDevice(auth, deviceId) {
       const device = ownDevice(auth, deviceId);
+      // Revoke here first so the API blocks the device even if SpacetimeDB is unreachable.
       device.revoked = true;
       for (const d of deliveries.values()) {
         if ("deviceId" in d.recipient && d.recipient.deviceId === deviceId && d.status !== "read") d.status = "revoked";
       }
+      await toSync(() => options.sync?.revokeDevice(deviceId));
       return { revoked: true };
     },
   };

@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createSigner } from "./auth";
 import { createFixtureServices } from "./fixtureServices";
+import { createSpacetimeSyncWriter } from "./sync";
 
 const secret = process.env.VORTEX_AUTH_SECRET;
 if (!secret) {
@@ -16,7 +17,18 @@ if (mode !== "fixture") {
 }
 
 const port = Number(process.env.VORTEX_API_PORT ?? 8787);
-const app = createApp({ services: createFixtureServices(), signer: await createSigner(secret) });
+// Optional: also write pairing/deliveries to SpacetimeDB so paired phones receive them live.
+const adminToken = process.env.VORTEX_SYNC_ADMIN_TOKEN;
+const sync = adminToken
+  ? await createSpacetimeSyncWriter({
+      uri: process.env.VORTEX_SYNC_URI ?? "http://127.0.0.1:3100",
+      database: process.env.VORTEX_SYNC_DB ?? "vortex-sync",
+      adminToken,
+    })
+  : undefined;
+console.log(sync ? "SpacetimeDB sync: on" : "SpacetimeDB sync: off (set VORTEX_SYNC_ADMIN_TOKEN to enable)");
+
+const app = createApp({ services: createFixtureServices(Date.now, sync ? { sync } : {}), signer: await createSigner(secret) });
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Vortex API on http://localhost:${port}/v1 (services: FIXTURE, not live evidence)`);

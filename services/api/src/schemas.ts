@@ -106,7 +106,12 @@ export type PairingCreateRequest = z.infer<typeof PairingCreateRequest>;
 export const Pairing = z.object({ pairingId: Id, nonce: z.string().min(32), expiresAt: ISODate });
 export type Pairing = z.infer<typeof Pairing>;
 
-export const PairingClaimRequest = z.object({ nonce: z.string().min(32).max(200), phoneDeviceName: z.string().min(1).max(100) });
+export const PairingClaimRequest = z.object({
+  nonce: z.string().min(32).max(200),
+  phoneDeviceName: z.string().min(1).max(100),
+  /** The phone's SpacetimeDB connection identity (64 hex chars), shown on the phone page. */
+  syncIdentity: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/, "64-character hex identity").optional(),
+});
 export type PairingClaimRequest = z.infer<typeof PairingClaimRequest>;
 export const PendingPairing = z.object({ pairingId: Id, status: z.literal("pending_confirmation"), phoneDeviceName: z.string() });
 export type PendingPairing = z.infer<typeof PendingPairing>;
