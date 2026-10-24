@@ -1,16 +1,16 @@
 # Andrew - Vortex teammate contract
 
-Version 1.2 | 25 October 2026 | Windows | Wire schema 1.0
+Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
-**Project context:** Vortex is a voice-controlled Windows workspace assistant. Find and group browser tabs, focus supported native windows, save a source-backed task checkpoint, send a reading brief to a paired phone, and resume unfinished work. It is profession-agnostic; the demo story is group-project research. Workspace continuity is the focus; a separate tutoring platform is out of scope.
+**Project context:** Vortex is a voice-controlled workspace manager for unfinished tasks. A named workspace collects selected browser tabs, references to still-open native windows, a user-stated goal and a checkpoint. It helps people switch tasks, preserve their place, take a selected brief to another device and resume. It is profession-agnostic; the demo is group-project research. Vortex manages the workspace around applications; arbitrary interaction inside applications and a separate tutoring platform are outside the MVP.
 
 **Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan is absent at kickoff and optional support only; no required feature or milestone depends on him.
 
-**Team clock:** 11 AM-10 PM. Gates: 1 PM real control; 3 PM phone vertical slice; 5 PM sponsor evidence; 6:30 PM feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
+**Team clock:** 11 AM-10 PM. Gates: 11:30 AM scope frozen; 1 PM real control; 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
 
 **Sponsors:** Cartesia = voice; Meta Llama = grounding/briefs plus a people-connection outcome; Elastic Agent Builder on Serverless = retrieval; Apify = requested public article extraction; SpacetimeDB = private real-time handoff; Fetch = registered ACP agent usable in ASI:One. Logos, fixtures and fallback paths do not prove a live integration or eligibility.
 
-**Shared rules:** never execute generated scripts or expose secrets; the local executor alone mutates the computer. Cloud content and sharing need scoped consent. Deferred archive/closing, layout changes and unattended automation remain disabled. Runtime-validate shared messages and preserve the existing teammate work.
+**Shared rules:** native windows expose identity/title/focus only, never document contents or arbitrary click/type actions. Membership is user-selected; AI may suggest resources and resolve intent. Never execute generated scripts or expose secrets; the local executor alone mutates the computer. Cloud content and sharing need scoped consent. Deferred archive/closing, layout changes and unattended automation remain disabled. Runtime-validate shared messages and preserve the existing teammate work.
 
 **Read next:** [team index](../TEAM_CONTRACT.md), [agent instructions](../AGENTS.md), [wire types/execution contract](JOSH.md#wire-contract), [API/auth/sync contract](ANDREW.md#api-contract), [team schedule](ANDREW.md#team-schedule). Source numbers in migrated sections refer to [the source list](ANDREW.md#sources). Proposed architecture is not a claim of completed implementation.
 
@@ -20,8 +20,8 @@ Branch: `feat/continuity`. Own `apps/dashboard/`, `apps/phone/`, authenticated A
 
 - By 12:30 PM: authenticated API skeleton and typed fixture client.
 - By 1 PM: phone auth/pairing and a private subscription proved.
-- By 3 PM: dashboard -> checkpoint -> real paired-phone receipt.
-- By 5 PM: progress/approval/revocation, teammate brief and real Spacetime evidence.
+- By 3 PM: named workspace saved and visible in dashboard; switch away and resume its designated live targets.
+- By 5 PM: grounded checkpoint -> actual paired-phone brief and real Spacetime/provider evidence; finish progress/approval/revocation and the previewed teammate brief. ASI:One parity/failure checks complete by 6:30 PM.
 - 5-6:30 PM: cross-user denial, pairing replay, reconnect and full-journey tests.
 - At 8 PM: hold a passing integrated release candidate. By 9:45 PM: final demo, backup recording, setup notes and sponsor evidence.
 
@@ -33,19 +33,17 @@ Read [Josh's wire types/executor rules](JOSH.md#wire-contract) and [Nova's spons
 
 **Mission:** make the user understand what is open, what will happen, and what traveled to another device. Own apps/dashboard, apps/phone, services/sync, Spacetime module and shared integration fixtures. Coordinate merges.
 
-#### Dashboard: four useful areas
+#### Dashboard: Workspaces, Checkpoints and Devices
 
-- **Now:** current task and relevant tabs/windows, a "focus this task" action, visible microphone state, live transcript and clarification choices.
+- **Workspaces:** named goal, selected tabs/native-window references, saved primary targets, latest checkpoint and Focus / Resume / Send brief actions. The current-workspace view includes push-to-talk, transcript, clarification and plan preview. Creating membership starts with selection, not automatic classification.
+- **Checkpoints:** source links, explicit user note, timestamp, grounded summary and a labeled proposed next step. Display unavailable native windows; do not imply their contents were read.
+- **Devices:** paired phone, delivery/read status, previewed teammate sharing and revoke access. Provider traces belong in a separate developer view.
 
-- **Later:** stale-tab suggestions with Keep / Snooze / Save checkpoint. No tab-closing execution is required for this demo.
-
-- **Checkpoints:** searchable saved work with source links, timestamp, observed progress, proposed next step and Resume action.
-
-- **Devices:** paired phone, delivery status, recent briefs and revoke access. Technical traces belong in a separate developer view.
+Primary success is task switching and resumption. Stale-tab scans/cleanup, standalone learning flows and general remote control are deferred.
 
 #### Build in this order
 
-Start against fixtures. Then implement auth, short-lived QR pairing, private Spacetime subscriptions and reducer checks. Build mobile web reader with summary/source link/read position, delivery acknowledgements and explicit read-aloud. Add a second-user project brief with preview, recipient selection and revocable access; no automatic messages.
+Start against fixtures. Implement named workspace CRUD and focus/resume plans against the shared resource adapter first. Then implement auth, short-lived QR pairing, private Spacetime subscriptions and reducer checks. Build mobile web reader with summary/source link/read position, delivery acknowledgements; read-aloud is optional stretch. Add a second-user project brief with preview, recipient selection and revocable access; no automatic messages.
 
 #### Phone handoff contract
 
@@ -70,11 +68,11 @@ Times below use Josh's supplied team clock, without timezone conversion. There a
 
 | Time | Josh / A | Nova / B | Andrew / C | Gate / expected evidence |
 | --- | --- | --- | --- | --- |
-| **11:00-11:30 AM** | Agree resource bindings, snapshot/action types; prove Windows helper prerequisites | Confirm model/provider accounts; freeze plan/checkpoint/brief fixtures; begin Fetch registration | API/auth skeleton, folder layout, fixture client; confirm Spacetime access | Shared interfaces committed; one article and demo task chosen; blockers posted |
+| **11:00-11:30 AM** | Freeze supported tab/window resources, primary targets and explicit executor actions | Freeze the six commands; provider checks and Fetch registration | Freeze Workspace type, API/fixtures and one group-project demo story | **11:30 AM:** operating boundary, schemas and demo story agreed |
 | **11:30 AM-1:00 PM** | Real Chrome inventory, tab activation and native window focus; Cartesia smoke test | Typed command -> plan; Llama/Elastic/Apify smoke tests; ACP agent setup | Dashboard against fixtures; authenticated API endpoints; private phone subscription and pairing | **1 PM:** a real command reaches the correct real tab/window; every provider has access or an explicit blocker |
-| **1:00-3:00 PM** | Connect Cartesia voice and executor; verify selected targets; tab grouping | Real checkpoint/brief generation and selected article retrieval; connect Elastic Agent Builder | Connect dashboard/API to A+B; real paired phone receipt; operation/delivery status | **3 PM:** voice -> correct tab -> durable checkpoint -> source-linked brief on a real phone |
-| **3:00-5:00 PM** | Resume saved task; handle changed targets, failed focus and reconnect | Complete ASI:One identity link + ACP workflow; collect Meta/Elastic/Apify/Fetch traces | Progress sync, approval UI, revocation checks; previewed teammate brief | **5 PM:** show real success evidence for all six integrations or decide explicit cuts/track limitations |
-| **5:00-6:30 PM** | Run stale-target/restart/duplicate-command checks on Windows | Grounding, ambiguity and provider-timeout checks; ASI:One primary-flow parity | Cross-user denial, pairing replay/expiry, reconnect and complete integrated journey | **6:30 PM feature freeze:** no new capabilities or service changes |
+| **1:00-3:00 PM** | Connect voice to workspace focus/resume; validate saved primary tab/native window; switch between two real workspaces | Resolve create/focus/resume and clarify ambiguous names; start source/provider path in parallel | Persist workspace membership/goal, show workspace cards and saved checkpoint/note; wire live resource adapter | **3 PM:** create/save workspace -> switch away -> resume matching live targets on actual laptop |
+| **3:00-5:00 PM** | Connect source-backed checkpoint/phone flow to voice; reopen checkpoint-bound URLs and report missing native windows | Real Llama checkpoint, Elastic retrieval and Apify article brief; collect provider traces; connect ASI:One identity | Real paired-phone delivery/receipt, progress, preview/approval/revocation and teammate brief | **5 PM:** grounded checkpoint + source-linked brief on a real phone + real traces or explicit sponsor blockers |
+| **5:00-6:30 PM** | Test stale/missing members, focus denied, restart, duplicate requests and cancellation | Complete ASI:One create/find/focus/checkpoint/send/resume using the same services; grounding and timeout checks | Cross-user denial, pairing replay/expiry, reconnect and complete laptop/phone journey | **6:30 PM:** ASI:One parity and essential failure cases pass; feature freeze |
 | **6:30-8:00 PM** | Fix execution/voice bugs only | Fix provider/agent bugs only | Integrate fixes and verify full phone/desktop journey | **8 PM release candidate:** end-to-end journey works on actual demo devices |
 | **8:00-9:00 PM** | Rehearse controls and reset routine | Rehearse ASI:One + sponsor evidence; verify sources | Lead three timed rehearsals; capture essential backup recording and setup notes | Three passing rehearsals or a reduced working demo; all failures have an honest explanation |
 | **9:00-9:45 PM** | Freeze known-good build and document Windows startup/reset | Finish real tool evidence and agent/run instructions | Final README/image/demo recording; validate from clean startup | **9:45 PM: demo-ready.** One pinned revision, recording, evidence and recovery instructions available |
@@ -85,8 +83,8 @@ Times below use Josh's supplied team clock, without timezone conversion. There a
 ### Cut rules and ownership
 
 - **1 PM:** if a provider is inaccessible, its owner investigates within the current block and makes the blocker visible. No service silently disappears from sponsor claims.
-- **3 PM:** if the phone slice is incomplete, all three owners prioritize that path before adding more UI. No new capability until it works.
-- **5 PM:** choose the demonstrable scope. Preserve voice/text find+focus, checkpoint, phone brief, source links and resume. Keep all selected sponsor integrations only where real evidence exists. If Fetch parity or social sharing is incomplete, state the relevant track gap.
+- **3 PM:** if saved workspace -> switch -> resume is incomplete, all three owners prioritize that path. Cut layout and cleanup work; do not broaden app control.
+- **5 PM:** choose the demonstrable scope. Preserve the six bounded workspace commands, grounded checkpoint, real phone brief and source links. Missing phone delivery becomes a release blocker for the next block. Keep all selected sponsor integrations only where real evidence exists. If Fetch parity or social sharing is incomplete, state the relevant track gap.
 - **6:30 PM:** stop feature work. Cut window layout changes, archive/closing tabs, automatic stale-tab scans, phone audio and offline caching before compromising the core path.
 - **8 PM:** if necessary, freeze a smaller honest live journey and record it; a fallback is labeled and never presented as a working sponsor integration.
 - **After 9 PM:** no architecture, model or dependency changes. Andrew controls integration; owners fix only reproducible demo blockers.
@@ -109,14 +107,14 @@ The root [TEAM_CONTRACT.md](../TEAM_CONTRACT.md) is the index. Canonical [wire t
 | POST /v1/plans/:id/execute | operationId, expectedRevision, approvalId if required -> operation receipt; executor rechecks live state. |
 | GET /v1/operations/:id | Authorized operation ID -> queued/running/partial/succeeded/failed/cancelled, per-action outcomes. |
 | POST /v1/operations/:id/cancel | Stop before next action; report any completed effects. Cancellation is not rollback. |
-| POST /v1/checkpoints | taskId, resourceIds, consent scope -> durable checkpoint, source references and inferred/observed labels. |
+| POST /v1/checkpoints | taskId (= workspaceId), resourceIds, sourceIds, userNote?, consent scope -> durable checkpoint, source references and inferred/observed labels. |
 | POST /v1/briefs | sourceIds, format, audience, taskId -> asynchronous build receipt; no implicit delivery. |
 | POST /v1/deliveries | operationId, briefId, recipient:{deviceId} or recipient:{userId}, approvalId -> durable delivery receipt. |
 | POST /v1/checkpoints/:id/resume | Resolve live matching resources and saved URLs -> preview Plan; execute uses ordinary approval path. |
 
 **Result envelope:** {schemaVersion:"1.0", requestId, ok:true, data} or {schemaVersion:"1.0", requestId, ok:false, error:{code,message,retryable}}. Backend derives user identity from credentials, never from a trusted userId in request JSON.
 
-**State updates:** resource.upserted, resource.removed, operation.updated, checkpoint.created, delivery.updated, readProgress.updated. Every event has eventId, schemaVersion, deviceId, sessionId, sequence and emittedAt. C maps Spacetime subscriptions into these logical events.
+**State updates:** resource.upserted, resource.removed, workspace.created, workspace.updated, operation.updated, checkpoint.created, delivery.updated, readProgress.updated. Every event has eventId, schemaVersion, deviceId, sessionId, sequence and emittedAt. C maps Spacetime subscriptions into these logical events.
 
 **Local channel:** authenticated native messaging -> desktop executor. **Remote channel:** authenticated backend -> authorized command row -> desktop outbound subscription -> receipt. Never expose a desktop control port publicly. Phone v1 has read/progress scope; ASI:One gets separately granted command scope.
 
@@ -159,12 +157,12 @@ Delivery defaults to the user's paired device with 24-hour expiry; cross-person 
 
 | Time | Visible result |
 | --- | --- |
-| 0:00-0:25 | Show 15-20 real tabs across two windows plus a native editor. State the task and speak: "Find my group project research." Show transcript and real semantic results. |
-| 0:25-0:55 | "Focus this task." Preview selected tabs, group them, focus a native notes window. Explain the difference between tab and OS control. |
-| 0:55-1:30 | "Save where I am and send this article to my phone." Show source-backed checkpoint, actual Apify result and Llama brief, then live phone receipt. |
+| 0:00-0:25 | Show 15-20 real tabs across two windows plus a native notes window. Show the Group Project workspace with explicit membership; speak "Find my project research." Show transcript and actual results. |
+| 0:25-0:55 | "Switch to Group Project." Preview selected membership, activate its primary research tab and focus the designated native notes window; show which gets final keyboard focus. |
+| 0:55-1:30 | "Save where I stopped. Next I need to compare costs." Add the explicit note to a source-backed checkpoint; "Send this article to my phone" shows an actual Apify/Llama brief and phone receipt. |
 | 1:30-2:00 | Phone shows brief/source link and read position. Preview a project briefing for a teammate; show second-user access to that brief only. |
 | 2:00-2:35 | Use the linked ASI:One conversation to find the checkpoint, deliver/read its brief and request resume. The same plan/approval APIs drive the laptop. |
-| 2:35-3:00 | Show restored task and proposed next step. Close with one measured result and honest current limits. Keep sponsor traces available for Q&A. |
+| 2:35-3:00 | Show resumed workspace membership, available native targets, source URLs and saved next step; do not claim native document recovery. Close with one measured result and honest current limits. Keep sponsor traces available for Q&A. |
 
 #### Release gate: test the failures that matter
 
@@ -244,6 +242,28 @@ docs/                          Andrew coordinates; all lanes update their runboo
 Use a workspace package manager and one lockfile after a real dependency smoke test. C coordinates root scripts and config. Suggested branches: feat/control, feat/intelligence, feat/continuity. These are proposed names, not existing branches. Never reset another person's work. Interface changes require matching TS/Zod schemas, JSON Schema for Python, fixtures, tests and a contract version update in one reviewed change. Additive optional fields can be a minor change; breaking changes require a new major contract.
 
 
+<a id="workspace-api"></a>
+
+## Workspace services and API additions
+
+Use the canonical [Workspace and WorkspaceCommand definitions](JOSH.md#workspace-model). Existing `taskId` checkpoint/brief fields refer to Workspace.id; keep their wire names for compatibility. Persist one full Workspace entity, exposing the legacy Task projection when needed. Additive workspace routes do not rename the existing routes or introduce a second task store.
+
+| Route | Validated input | Result / behavior |
+| --- | --- | --- |
+| GET /v1/workspaces | authenticated user; optional deviceId | Authorized workspace cards and latest checkpoint references |
+| POST /v1/workspaces | name, goal, deviceId, selectedResourceIds, primaryTabId?, primaryWindowId?, expectedSnapshotRevision | Workspace; explicit membership only; Idempotency-Key required |
+| PATCH /v1/workspaces/:workspaceId | expectedRevision, edited name/goal/membership/primary targets | Updated Workspace; reject stale revisions and cross-user/device members |
+| POST /v1/workspaces/:workspaceId/focus | deviceId, snapshotRevision | Bounded Plan of verified primary-target activation/focus; no arbitrary in-app actions |
+| POST /v1/workspaces/:workspaceId/resume | deviceId, snapshotRevision | Bounded Plan using live members and latest checkpoint-bound saved URLs; report unavailable native windows |
+
+Execute plans through the existing approve/execute endpoints. A high-level workspace command is not a new generic OS permission. `focus` selects the saved primary tab/window rather than activating every tab. A returned focus/resume plan states the final keyboard-focus target. If no primary target was chosen, ask the user rather than infer an unsafe replacement.
+
+Use existing POST /v1/checkpoints with `taskId = workspaceId`, `resourceIds`, `sourceIds`, optional `userNote` and `consentId`. A 3 PM checkpoint may contain metadata and the user's explicit note; the 5 PM checkpoint/brief must demonstrate selected browser evidence. Native-window metadata alone never supports document-content or completed-work claims.
+
+Bounds: workspace name <= 100 characters, goal/userNote <= 2,000 characters, membership <= 100 resources. Primary IDs must belong to selected membership with matching kinds/device; check caller ownership. Cloud sync and sharing remain consented; a teammate receives only the approved brief, not the workspace or all member metadata. Keep local execution bindings private to Josh's adapter.
+
+Wire envelope remains 1.0; Workspace types/routes and optional `userNote`/plan `workspaceId` fields are additive. Update runtime validation, generated JSON Schema and fixtures together before integration. Do not independently rename `taskId` to `workspaceId` in existing fields.
+
 <a id="api-contract"></a>
 
 ## Appendix D - Request bodies and route behavior
@@ -258,7 +278,7 @@ All routes use a backend-verified access token. Native IPC is separately authent
 | POST /v1/plans/:id/execute | operationId, expectedRevision, approvalId? | Operation receipt, normally HTTP 202 |
 | GET /v1/operations/:id | none | Operation |
 | POST /v1/operations/:id/cancel | none | Operation |
-| POST /v1/checkpoints | taskId, resourceIds, sourceIds, consentId | Operation receipt; result includes checkpointId |
+| POST /v1/checkpoints | taskId (= workspaceId), resourceIds, sourceIds, userNote?, consentId | Operation receipt; result includes checkpointId |
 | POST /v1/briefs | sourceIds, taskId?, checkpointId?, format, audience, consentId | Operation receipt; result includes briefId |
 | POST /v1/deliveries | operationId, briefId, briefVersion, recipient union, approvalId? | Delivery |
 | POST /v1/checkpoints/:id/resume | deviceId, snapshotRevision | Plan, with preview before effects |
@@ -278,9 +298,9 @@ Async provider work returns immediately with a receipt. Apify budget is 60 secon
 
 Local desktop storage (SQLite recommended): resource bindings, inventory snapshots, plans, approvals, operation journal, action receipts, archive entries and outbox. Persist before actions. Cloud credentials use an OS-protected credential store. The dashboard renderer receives only scoped methods, never raw database or filesystem access.
 
-SpacetimeDB logical tables: User, Device, Pairing, Task, Checkpoint, Brief, BriefSource, Delivery, ReadProgress, RemoteCommand, OperationReceipt, ShareGrant. Private data must not be exposed by public tables/subscriptions. Use the supported version's private tables and authenticated views/reducers, or route through an authorization-enforcing backend. Test this explicitly with a second identity.
+SpacetimeDB logical tables: User, Device, Pairing, Workspace (existing Task projection uses the same ID; not a separate entity), Checkpoint, Brief, BriefSource, Delivery, ReadProgress, RemoteCommand, OperationReceipt, ShareGrant. Private data must not be exposed by public tables/subscriptions. Use the supported version's private tables and authenticated views/reducers, or route through an authorization-enforcing backend. Test this explicitly with a second identity.
 
-Suggested reducers: create_pairing, claim_pairing, confirm_pairing, revoke_device, publish_checkpoint, publish_brief, create_delivery, acknowledge_delivery, update_read_progress, create_remote_command, acknowledge_remote_command, revoke_share, delete_checkpoint. Each checks caller identity, ownership, device scope and immutable content version. `create_remote_command` is unavailable to the read-only phone role. Events listed in section 08 in this file are logical events derived from subscriptions, not a second competing event store.
+Suggested reducers: create_workspace, update_workspace, create_pairing, claim_pairing, confirm_pairing, revoke_device, publish_checkpoint, publish_brief, create_delivery, acknowledge_delivery, update_read_progress, create_remote_command, acknowledge_remote_command, revoke_share, delete_checkpoint. Each checks caller identity, ownership, device scope and immutable content version. `create_remote_command` is unavailable to the read-only phone role. Events listed in section 08 in this file are logical events derived from subscriptions, not a second competing event store.
 
 Desktop is execution authority; Spacetime is shared delivery/receipt authority; Elastic is an eventually consistent searchable projection. Backend provider jobs update shared result state and the desktop consumes it. Every outbox message carries a deduplication ID. Track index status as pending/ready/failed, so a saved checkpoint remains visible before search indexing completes.
 
@@ -312,6 +332,8 @@ Create shared fixtures before implementing AI. Required cases (deferred archive/
 18. Teammate handoff -> only previewed brief visible to second identity.
 19. ASI:One primary workflow -> find, checkpoint, brief delivery and resume using real tool execution and linked identity; no custom dashboard dependency.
 20. Sponsor verification -> real trace for Cartesia, Llama, Elastic Agent Builder/Serverless, Apify, Spacetime and Fetch registration/ACP.
+
+Additional required workspace fixtures: user-selected membership only; duplicate workspace names -> clarification; wrong-kind/nonmember primary target -> validation failure; closed native window -> unavailable (no title-based substitution); save/switch/resume the same Workspace ID; metadata-only native title -> no invented document summary.
 
 Tests should use adapter boundaries for unit checks and actual Windows/Chrome/phone integration for the core journey. Do not equate passing mocked tests with OS execution or sponsor eligibility. Record sample sizes and latency measurements. A finished visual demo that does not execute real actions is incomplete.
 

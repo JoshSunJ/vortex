@@ -1,16 +1,16 @@
 # Josh - Vortex teammate contract
 
-Version 1.2 | 25 October 2026 | Windows | Wire schema 1.0
+Version 1.3 | 25 October 2026 | Windows | Wire schema 1.0
 
-**Project context:** Vortex is a voice-controlled Windows workspace assistant. Find and group browser tabs, focus supported native windows, save a source-backed task checkpoint, send a reading brief to a paired phone, and resume unfinished work. It is profession-agnostic; the demo story is group-project research. Workspace continuity is the focus; a separate tutoring platform is out of scope.
+**Project context:** Vortex is a voice-controlled workspace manager for unfinished tasks. A named workspace collects selected browser tabs, references to still-open native windows, a user-stated goal and a checkpoint. It helps people switch tasks, preserve their place, take a selected brief to another device and resume. It is profession-agnostic; the demo is group-project research. Vortex manages the workspace around applications; arbitrary interaction inside applications and a separate tutoring platform are outside the MVP.
 
 **Team:** Josh owns A (control/voice), Nova owns B (intelligence/providers/Fetch), Andrew owns C (dashboard/API/phone/sync/integration). Nathan is absent at kickoff and optional support only; no required feature or milestone depends on him.
 
-**Team clock:** 11 AM-10 PM. Gates: 1 PM real control; 3 PM phone vertical slice; 5 PM sponsor evidence; 6:30 PM feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
+**Team clock:** 11 AM-10 PM. Gates: 11:30 AM scope frozen; 1 PM real control; 3 PM saved workspace -> switch away -> resume; 5 PM grounded checkpoint + real phone brief + sponsor traces; 6:30 PM ASI:One parity/failure cases and feature freeze; 8 PM release candidate; 9:45 PM demo-ready; 9:45-10 PM buffer. These supplied times are not timezone-converted. Organizer submission deadlines are separate.
 
 **Sponsors:** Cartesia = voice; Meta Llama = grounding/briefs plus a people-connection outcome; Elastic Agent Builder on Serverless = retrieval; Apify = requested public article extraction; SpacetimeDB = private real-time handoff; Fetch = registered ACP agent usable in ASI:One. Logos, fixtures and fallback paths do not prove a live integration or eligibility.
 
-**Shared rules:** never execute generated scripts or expose secrets; the local executor alone mutates the computer. Cloud content and sharing need scoped consent. Deferred archive/closing, layout changes and unattended automation remain disabled. Runtime-validate shared messages and preserve the existing teammate work.
+**Shared rules:** native windows expose identity/title/focus only, never document contents or arbitrary click/type actions. Membership is user-selected; AI may suggest resources and resolve intent. Never execute generated scripts or expose secrets; the local executor alone mutates the computer. Cloud content and sharing need scoped consent. Deferred archive/closing, layout changes and unattended automation remain disabled. Runtime-validate shared messages and preserve the existing teammate work.
 
 **Read next:** [team index](../TEAM_CONTRACT.md), [agent instructions](../AGENTS.md), [wire types/execution contract](JOSH.md#wire-contract), [API/auth/sync contract](ANDREW.md#api-contract), [team schedule](ANDREW.md#team-schedule). Source numbers in migrated sections refer to [the source list](ANDREW.md#sources). Proposed architecture is not a claim of completed implementation.
 
@@ -19,8 +19,8 @@ Version 1.2 | 25 October 2026 | Windows | Wire schema 1.0
 Branch: `feat/control`. Own `apps/desktop/`, `apps/extension/`, `native/windows/` and local execution. Edit `packages/contracts/` with Nova/Andrew review. Start with inventory and fixture plans; then real focus, voice and live intelligence. Provide Nova/Andrew a typed snapshot and executor adapter early.
 
 - By 1 PM: real Chrome tab and supported Windows window focus; Cartesia access verified.
-- By 3 PM: voice command reaches real control and the integrated checkpoint/phone slice.
-- By 5 PM: grouping/resume/reconnect and actual Cartesia evidence.
+- By 3 PM: a named workspace can be saved, shown, switched away from and resumed using its primary tab/native window. Initial checkpoints may use only metadata and an explicit user note.
+- By 5 PM: voice-driven workspace focus/resume participates in grounded checkpoint -> phone brief, with actual Cartesia evidence.
 - 5-6:30 PM: stale target, storage, restart, duplicate-operation and cancellation checks.
 - After freeze: execution/voice fixes, three rehearsals and Windows startup/reset instructions.
 
@@ -35,7 +35,7 @@ Depend on Nova for validated plans and Andrew for API/UI wiring; never depend on
 | Layer | Responsibility / boundary |
 | --- | --- |
 | Desktop renderer | Local dashboard, push-to-talk, transcript, plan preview and recovery controls. No provider keys or direct OS calls. |
-| Desktop main + Windows helper | Single local command executor; persistent operation journal; window enumeration/focus; minimize/restore/move are stretch features. Use explicit handles and verified process identity. |
+| Desktop main + Windows helper | Single local command executor; persistent operation journal; ordinary top-level window identity/title/focus only; a single reviewed side-by-side layout is optional stretch. Use explicit handles and verified process identity. |
 | Chrome extension | Track tabs/windows, group and activate tabs, capture permitted text. Native messaging host bridges to desktop; register only the known extension ID. |
 | Backend / intelligence | Authenticate; route to Cartesia, Llama, Elastic Agent Builder and Apify; validate plans. Never execute generated scripts. |
 | SpacetimeDB | Authorized shared state: devices, checkpoints, deliveries, progress and command receipts. Local desktop journal remains authoritative for local execution. |
@@ -67,7 +67,7 @@ Voice or text -> transcript -> relevant tab/window snapshot -> validated plan ->
 
 - 1. Inventory: Chrome tabs/window events and Windows top-level windows. Generate app-owned IDs bound to current session IDs/handles. Persist firstObservedAt and lastActivatedAt; unknown age stays unknown.
 
-- 2. Control: activate tab; group selected tabs; focus a supported native window. Minimize/restore/layout rearrangement are stretch features only after the main journey passes. Never close native apps in the MVP.
+- 2. Control: create/focus/resume a workspace through explicit tab activation/grouping, checkpoint-bound URL reopen and designated native-window focus. Do not read native app document contents or expose generic click/type tools. Only one reviewed side-by-side layout can be optional stretch; never close native apps.
 
 - 3. Command runner: validate revision, resource identity, scope and approval; journal operations; process desktop mutations serially. Return per-action outcomes.
 
@@ -77,11 +77,11 @@ Voice or text -> transcript -> relevant tab/window snapshot -> validated plan ->
 
 #### Interfaces you provide
 
-getSnapshot(), executePlan(planId, approvalId), getOperation(id), restoreCheckpoint(id), and capabilities(). Browser adapter exports listTabs, activateTab, groupTabs and openSavedUrl. Windows adapter exports listWindows and focusWindow. archiveTabs and setWindowState are future capabilities and must not be advertised by the demo.
+getSnapshot(), planWorkspaceFocus(workspaceId), planWorkspaceResume(workspaceId), executePlan(planId, approvalId), getOperation(id), restoreCheckpoint(id), and capabilities(). Andrew persists workspaces; Nova resolves high-level intents. Browser adapter exports listTabs, activateTab, groupTabs and openSavedUrl. Windows adapter exports listWindows and focusWindow. archiveTabs and setWindowState are future capabilities and must not be advertised by the demo.
 
 #### Acceptance demo
 
-With two Chrome windows and a native editor open, say "switch to my project notes." Resolve the intended tab, focus its browser window, and verify selection. Then focus the editor by voice. Navigate a selected tab before executing a saved plan: execution must return STALE_STATE.
+Create Group Project from user-selected research tabs plus a live notes window. Save primary tab/window IDs, switch to another workspace, then say "Continue Group Project." Verify the saved primary tab and native-window targets. A missing native window must appear unavailable rather than launching arbitrary applications. Navigate a selected tab before executing a saved plan: return STALE_STATE.
 
 #### Dependencies and deliverables
 
@@ -99,7 +99,7 @@ Use B's fixture plan until intelligence is ready; expose mock adapter to C on ho
 
 **Resource:** app-owned UUID, revision, session binding, kind (tab/window), device ID, display title, optional URL, firstObservedAt, lastActivatedAt, protection flags and capabilities. Chrome tab IDs and Windows handles are ephemeral bindings, never global identifiers.
 
-**Task:** UUID, user-stated goal and selected resource IDs. **Checkpoint:** immutable source snapshot, source hashes, summary, proposed next step, provenance, timestamp. **Brief:** versioned selected content and audience. **Delivery:** brief ID/version, recipient, expiry and receipt state. **ReadProgress:** resource/brief version, position and last update.
+**Workspace:** name, user-stated goal, selected resources, saved primary tab/native window, revision and latest checkpoint. Existing **Task** and `taskId` wire fields are compatible projections/references to that same entity, not a separate task store. **Checkpoint:** immutable source snapshot, source hashes, explicit user note, summary, labeled proposed next step, provenance and timestamp. Native titles supply identity, not evidence about document contents. **Brief:** versioned selected content and audience. **Delivery:** brief ID/version, recipient, expiry and receipt state. **ReadProgress:** resource/brief version, position and last update.
 
 #### Execution state machine
 
@@ -120,11 +120,27 @@ Operation: persist before effects; update each action as it completes. Archive: 
 **Error vocabulary:** VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, STALE_STATE, PROTECTED, NEEDS_CLARIFICATION, APPROVAL_REQUIRED, EXPIRED, DEVICE_OFFLINE, FOCUS_DENIED, STORAGE_FAILED, PROVIDER_TIMEOUT, CONTENT_UNAVAILABLE, IDEMPOTENCY_CONFLICT, INTERNAL_ERROR.
 
 
+<a id="workspace-model"></a>
+
+## Workspace model and command boundary
+
+The full Workspace type below extends the existing Task projection. Persist one workspace entity only: `Task.id`, `Workspace.id` and existing `taskId` fields are the same UUID. Keep `taskId` names on existing checkpoint/brief APIs to avoid an incompatible wire rename. New workspace APIs use `workspaceId` in route parameters. This is an additive wire-1.0 specification; all required implementations must add matching runtime schemas/JSON Schema and fixtures before enabling it.
+
+Membership is explicit user selection. Primary target IDs must belong to the workspace, have the correct resource kind and belong to the requested authorized device. AI suggestions do not silently add members. A workspace is not a Windows virtual desktop or a copy of application memory.
+
+`create_workspace` persists selected membership through Andrew's service and never changes app contents. `focus_workspace` reads that membership and produces a bounded plan of existing `activate_tab`, optional selected `group_tabs`, and `focus_window` operations. Only a designated primary tab is activated, and only a designated primary native window is focused; the UI states which receives final keyboard focus. `resume_workspace` uses the same rules, may reopen checkpoint-bound saved HTTP(S) URLs, and displays the checkpoint. It does not launch closed native apps or claim document/session recovery.
+
+Checkpoint/brief creation and delivery use the existing shared services. Saving never closes resources. Before a live mutation, revalidate resource identity/revision and show any necessary approval. Keep title-based identification separate from native document contents. A closed/missing member is marked unavailable and the user gets per-target results; do not guess a replacement window by title.
+
+The executor has no click-coordinate, arbitrary typing, shell, file-editing, form-submission or purchase tool. Missing capability returns a typed failure/clarification rather than expanding the action vocabulary.
+
+When finalFocusResourceId is present, it must be a selected live member targeted by the plan; the last successful focus/activation action names it. The executor validates the field and action order and reports failure/partial results if the requested final focus cannot be achieved. A checkpoint command preserves the explicit userNote through its Action, service request and stored Checkpoint.
+
 <a id="wire-contract"></a>
 
 ## Appendix C - Canonical wire types (starter specification)
 
-These are design contracts, not an installed SDK or validated implementation. Put runtime validation in packages/contracts; generate JSON Schema for the Python service. Wire schema remains 1.0; document revision 1.2 splits the team workflow into four named contracts. Deferred action kinds are disabled in runtime capabilities. Timestamps are UTC ISO 8601 strings; elapsed age is calculated from them. IDs are UUID strings unless explicitly identified as provider IDs. Unknown optional values are omitted, never fabricated. Content sizes and URL schemes must be bounded by runtime schemas.
+These are design contracts, not an installed SDK or validated implementation. Put runtime validation in packages/contracts; generate JSON Schema for the Python service. Wire schema remains 1.0; document revision 1.3 defines bounded task workspaces and adds workspace services. Deferred action kinds are disabled in runtime capabilities. Timestamps are UTC ISO 8601 strings; elapsed age is calculated from them. IDs are UUID strings unless explicitly identified as provider IDs. Unknown optional values are omitted, never fabricated. Content sizes and URL schemes must be bounded by runtime schemas.
 
 ```ts
 type Id = string;
@@ -179,6 +195,32 @@ type Task = {
   updatedAt: ISODate;
 };
 
+// Additive full entity. Existing Task is its legacy-compatible projection.
+// Task.id, Workspace.id and all existing taskId fields name the same entity.
+type Workspace = Task & {
+  name: string;
+  deviceId: Id;
+  revision: number;
+  primaryTabId?: Id;             // selected Resource.id of kind tab
+  primaryWindowId?: Id;          // selected Resource.id of kind window
+  latestCheckpointId?: Id;
+  createdAt: ISODate;
+};
+
+// High-level service commands, not generic OS executor permissions.
+type WorkspaceCommand =
+  | { kind: "find"; query: string; workspaceId?: Id }
+  | { kind: "create_workspace"; name: string; goal: string;
+      deviceId: Id; selectedResourceIds: Id[];
+      primaryTabId?: Id; primaryWindowId?: Id }
+  | { kind: "focus_workspace"; workspaceId: Id }
+  | { kind: "save_checkpoint"; workspaceId: Id; sourceIds: Id[];
+      userNote?: string }
+  | { kind: "send_brief"; workspaceId?: Id; sourceIds: Id[];
+      recipient: { deviceId: Id } | { userId: Id } }
+  | { kind: "resume_workspace"; workspaceId: Id };
+
+
 type Source = {
   id: Id;
   resourceId?: Id;
@@ -200,7 +242,8 @@ type GroundedPoint = {
 
 type Checkpoint = {
   id: Id;
-  taskId: Id;
+  taskId: Id;                   // Workspace.id; field retained for compatibility
+  userNote?: string;             // explicit user-provided context, never inferred
   createdAt: ISODate;
   version: number;
   resourceSnapshots: Resource[];
@@ -253,7 +296,7 @@ type Action =
   | { kind: "set_window_state"; target: Target;
       state: "minimized" | "normal" | "maximized" }
   | { kind: "create_checkpoint"; taskId: Id; sourceIds: Id[];
-      targets: Target[] }
+      userNote?: string; targets: Target[] }
   | { kind: "archive_tabs"; targets: Target[]; checkpointId: Id }
   | { kind: "open_saved_url"; checkpointId: Id; sourceId: Id;
       url: string; expectedSourceHash: string }
@@ -267,8 +310,10 @@ type Plan = {
   kind: "plan";
   id: Id;
   commandId: Id;
+  workspaceId?: Id;              // additive link to the target workspace
   deviceId: Id;
   snapshotRevision: number;
+  finalFocusResourceId?: Id;     // validated selected target; final focus action
   actions: { actionId: Id; action: Action }[];
   explanation: string;
   approvalRequired: boolean;     // derived by policy, not chosen by model
@@ -294,6 +339,7 @@ type ActionResult = {
   status: "pending" | "running" | "succeeded" | "failed"
     | "skipped" | "unknown";
   code?: ErrorCode;
+  workspaceId?: Id;
   checkpointId?: Id;
   briefId?: Id;
   deliveryId?: Id;
