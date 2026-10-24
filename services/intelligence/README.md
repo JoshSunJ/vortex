@@ -1,5 +1,9 @@
 # Owner B: Tab Selection and Workspace Intent Routing
 
+The [API integration slice](API_INTEGRATION.md) adds a Node 24+ demonstration
+through the actual authenticated team API and canonical schemas. Its shared data
+and model remain labeled MOCK. This does not enable the default desktop UI yet.
+
 A dependency-free Node.js starting point for Owner B. Gemini is the selected model
 provider. Real browser inventory, Elastic, Apify, and Fetch are not connected.
 All demos still use MOCK records/responses. A synthetic live Gemini check passed

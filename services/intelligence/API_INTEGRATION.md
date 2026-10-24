@@ -1,0 +1,124 @@
+# Owner B API and canonical-schema integration
+
+This slice connects Owner B's resolver to Andrew's actual `Services.createPlan`
+interface and Hono authentication routes. Content drafts now use the actual
+`@vortex/contracts` runtime schemas instead of injected test validators.
+
+## Branch dependency and ownership
+
+Started from `origin/main` at `c0a10cc`, then merged published Owner A branch
+`feat/control` at `a270752` into this feature branch only, then updated that
+dependency to `f319ef5` (direct voice previews and Cartesia spoken replies).
+That branch carries Andrew's API/contracts/fixtures as imported by Josh.
+Root configuration, lockfile, wire schema and routes are unchanged. A narrow
+integration fix in `apps/desktop/src/control.ts` is described below for Josh's
+review; other A/C implementation files are imported unchanged.
+
+`main` and teammate branches were not changed. The separate Fetch boundary on
+`codex/owner-b-fetch-boundary` is not a dependency of this slice. Andrew should
+coordinate shared-branch integration; do not independently merge duplicate copies
+of his API commits from different histories without checking their contents.
+
+## Demonstrate the contribution without cloud costs
+
+Use Node 24+ (required by the shared root configuration). Install the existing
+lockfile dependencies with `npm ci --ignore-scripts`. This skips the Electron
+binary download; this runbook does not launch Electron. Then run:
+
+```powershell
+node --import tsx services/intelligence/api-demo.mjs
+```
+
+It runs in-process, without a server port, microphone or API key:
+
+1. An actual HMAC-signed development identity is verified by the existing API.
+2. `POST /v1/plans` receives `resume Group Project`.
+3. Owner B resolves the saved workspace using server-scoped records.
+4. The shared fixture planner returns a canonical, stored preview plan.
+5. Owner B also generates a source-grounded synthetic checkpoint through the
+   actual canonical validators and a labeled mock model/consent policy.
+
+Every fixture/model/consent dependency is explicitly MOCK. This proves integration
+and schema compatibility, not a real user login, Gemini call, real source
+extraction, desktop action, persisted summary, phone delivery or sponsor evidence.
+No key or signed token is printed. No local environment file is loaded.
+
+## Compose into Andrew's existing API
+
+```ts
+import { createApiPlanner } from './services/intelligence/src/api-planner';
+// sharedServices is Andrew's existing authenticated Services implementation.
+const services = {
+  ...sharedServices,
+  createPlan: createApiPlanner(sharedServices),
+};
+const app = createApp({ services, signer });
+```
+
+Do not relabel fixtures as `live`. The adapter preserves the supplied service
+label and never chooses a fixture fallback. The default `services/api/src/server.ts`
+and Owner A Electron entrypoint are unchanged; they do not enable this composition
+automatically. Coordinate the actual app hookup with Andrew/Josh.
+
+`focus`, `switch to`, `resume`, and `continue` resolve complete saved workspace
+names. Duplicate names return canonical Clarification options. An unknown
+workspace returns NOT_FOUND. Unsupported/create/save/send/search requests never
+fall through to Andrew's canned focus plan: they return guidance to use the
+existing dedicated service/form. This planning endpoint does not mutate state.
+
+All inputs use the existing API request schema. Identity comes from AuthContext,
+inventory/workspaces come from authorized shared services, and device/revision/
+selected-resource checks run before requesting a plan. Returned plans must match
+the requested workspace, device and snapshot and exclude deferred actions.
+
+The adapter preserves the exact shared plan ID, command ID, hash and action order
+so its existing approval record remains valid. The current shared workspace
+planning methods allocate their own commandId (their signature has no caller
+commandId). Correlate through the returned stored plan; do not rewrite its fields
+after hashing. End-to-end caller-command correlation remains an A/C integration
+detail to agree before production. No schema change is introduced here.
+
+## Canonical content generation
+
+`createCanonicalContentDrafts({hashText, authorize, model, clock?})` binds the
+existing builder to Workspace/Resource/Source/Checkpoint/Brief schemas imported
+from `@vortex/contracts`. It adds no new data model, store or creation endpoint.
+See HANDOFF.md for consent, source loading, immutable-version and operation-worker
+requirements. The shared service must persist the validated draft and manage
+the real operation receipt; draft creation alone is not delivery.
+
+## Checks
+
+Latest dependency check: 96 Vitest tests passed, including the new expiry
+regression and Josh's latest voice-preview/TTS cases. Root and desktop TypeScript
+checks passed. The synthetic API/content demonstration passed without provider
+calls or desktop effects.
+
+### Plan timestamp race found during integration
+
+An unmodified desktop workspace test intermittently failed because `savePlan`
+read `new Date()` for creation and `Date.now()` separately for expiry. A 1 ms tick
+between reads produced a lifetime of 120001 ms, rejected by the executor's
+existing 120000 ms upper bound. The deterministic regression in
+`test/plan-expiry.integration.spec.mjs` failed before the fix and passes after it.
+
+The fix captures `Date.now()` once and derives both timestamps from that reading.
+The two-minute policy, action vocabulary, approval rules and wire fields are
+unchanged. The regression uses an in-memory journal and mock native adapter;
+it never focuses a real window. Josh should review this small control-file change.
+
+```powershell
+node node_modules/typescript/bin/tsc -p tsconfig.json
+node node_modules/typescript/bin/tsc -p apps/desktop/tsconfig.json
+node node_modules/vitest/vitest.mjs run services/intelligence/test/api-planner.integration.test.ts services/intelligence/test/canonical-content.integration.test.ts services/intelligence/test/plan-expiry.integration.spec.mjs
+```
+
+The new integration suite covers the actual HMAC/API/schema path, workspace
+routing, missing/forged/phone/cross-user access, device mismatch, stale snapshots,
+ambiguous names, injected records, invalid service plans, preserved approval
+hashes, exact notes/quotes, source hashes, canonical-record rejection and native
+identity exclusion from model messages. No external provider is called.
+
+Legacy B `.test.mjs` files use Node's test runner; the shared TS tests use Vitest.
+Run these suites with their respective runners rather than treating Node tests
+as Vitest tests. Andrew coordinates any future unified root test configuration.
